@@ -2,17 +2,13 @@
     <x-ui.page-header title="New Purchase Entry" subtitle="Admin only. Record a purchase from a karigar or supplier."
         :crumbs="[['label' => 'Purchases & Vendors', 'href' => route('purchases.list')], ['label' => 'New Purchase']]">
         <x-slot:actions>
-            <x-ui.button variant="secondary" icon="building" :href="route('purchases.vendors')">Vendors</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         <x-ui.card>
             <form wire:submit="save">
-                <div class="rj-segment mb-5">
-                    <button type="button" wire:click="$set('purchaseType', 'finished_product')" class="{{ $purchaseType === 'finished_product' ? 'is-active' : '' }}">Finished Product</button>
-                    <button type="button" wire:click="$set('purchaseType', 'raw_material')" class="{{ $purchaseType === 'raw_material' ? 'is-active' : '' }}">Raw Material</button>
-                </div>
+                {{-- Finished-product purchases hidden: finished goods enter through import (8 Oct change list, 13.1). --}}
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <x-ui.field label="Vendor" for="np-vendor" error="vendorId">

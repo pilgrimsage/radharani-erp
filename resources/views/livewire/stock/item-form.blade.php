@@ -152,7 +152,7 @@
                 {{-- Placement --}}
                 <section class="pt-6 border-t border-line-light">
                     <h3 class="text-[13px] font-bold text-ink_text-primary mb-3.5">Where it's kept</h3>
-                    <x-ui.field label="Packet" for="f-packet" error="packet_id" optional hint="You can also scan it into a packet later from Assign Items.">
+                    <x-ui.field label="Packet" for="f-packet" error="packet_id" optional hint="You can also scan it into a packet later from Change Item location.">
                         <select id="f-packet" wire:model="packet_id" class="rj-select">
                             <option value="">Not in a packet yet</option>
                             @foreach ($packetsByBox as $boxCode => $packets)

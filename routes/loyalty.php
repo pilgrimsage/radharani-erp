@@ -6,8 +6,8 @@ use App\Livewire\Loyalty\LoyaltyLedger;
 
 Route::middleware(['auth'])->prefix('loyalty')->group(function () {
     Route::get('/award', LoyaltyAward::class)
-        ->middleware('permission:loyalty.manage')->name('loyalty.award');
+        ->middleware('permission:referral.manage')->name('loyalty.award');
 
     Route::get('/ledger', LoyaltyLedger::class)
-        ->middleware('permission:loyalty.manage')->name('loyalty.ledger');
+        ->middleware('permission:referral.manage')->name('loyalty.ledger');
 });

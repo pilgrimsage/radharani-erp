@@ -1,6 +1,6 @@
 <div>
-    <x-ui.page-header title="Assign Items" subtitle="Keep the system matching the stock room. Put pieces into packets and packets into boxes."
-        :crumbs="[['label' => 'Stock', 'href' => route('stock.items')], ['label' => 'Assign Items']]">
+    <x-ui.page-header title="Change Item location" subtitle="Keep the system matching the stock room. Put pieces into packets and packets into boxes."
+        :crumbs="[['label' => 'Stock', 'href' => route('stock.items')], ['label' => 'Change Item location']]">
         <x-slot:actions>
             <div class="rj-segment">
                 <button type="button" wire:click="setMode('scan')" class="{{ $mode === 'scan' ? 'is-active' : '' }}"><x-ui.icon name="scan" :size="14" /> Scan</button>

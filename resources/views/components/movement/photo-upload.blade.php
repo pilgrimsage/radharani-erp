@@ -1,6 +1,6 @@
-@props(['photo' => null, 'label' => 'Photo', 'hint' => 'JPG or PNG up to 5 MB. Compressed automatically when saved.'])
+@props(['photo' => null, 'label' => 'Photo', 'hint' => 'JPG or PNG up to 5 MB. Compressed automatically when saved.', 'required' => false])
 {{-- Binds $photo (Livewire WithFileUploads); the component saves it through PhotoCompressionService. --}}
-<x-ui.field :label="$label" error="photo" optional>
+<x-ui.field :label="$label" error="photo" :optional="! $required">
     @if ($photo && ! $errors->has('photo'))
         <div class="flex items-center gap-3.5 p-3 rounded-xl ring-1 ring-inset ring-line-light">
             <img src="{{ $photo->temporaryUrl() }}" alt="" class="w-16 h-16 rounded-lg object-cover ring-1 ring-line">

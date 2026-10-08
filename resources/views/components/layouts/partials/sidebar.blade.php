@@ -8,6 +8,7 @@ $pendingReview = \App\Models\Stock\Item::where('status', 'pending_review')->coun
 $pendingSales = \App\Models\Sales\Sale::where('confirmed_by_accountant', false)->count();
 $pendingMessages = \App\Models\Notification\PendingNotification::where('status', 'pending')->count();
 
+// Hidden for now (8 Oct change list, section 18): Accounting, Loyalty, Vendors. Routes are switched off in routes/web.php and routes/admin.php.
 // Single source for the whole navigation. 'can' is a permission (or list, any-of) gate.
 $nav = [
     ['type' => 'link', 'route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],
@@ -15,7 +16,7 @@ $nav = [
         ['route' => 'stock.items', 'label' => 'Inventory'],
         ['route' => 'stock.boxes', 'label' => 'Boxes'],
         ['route' => 'stock.packets', 'label' => 'Packets'],
-        ['route' => 'stock.assign', 'label' => 'Assign Items'],
+        ['route' => 'stock.assign', 'label' => 'Change Item location'],
         ['route' => 'stock.qr-codes', 'label' => 'QR Codes'],
         ['route' => 'stock.import', 'label' => 'Bulk Import'],
         ['route' => 'stock.configurator', 'label' => 'Configurator'],
@@ -55,20 +56,10 @@ $nav = [
         ['route' => 'sales.history', 'label' => 'Sales History'],
     ]],
     ['key' => 'purchases', 'label' => 'Purchases', 'icon' => 'cart', 'can' => 'purchase.manage', 'items' => [
-        ['route' => 'purchases.vendors', 'label' => 'Vendors'],
         ['route' => 'purchases.new', 'label' => 'New Purchase'],
         ['route' => 'purchases.list', 'label' => 'Purchase List'],
     ]],
-    ['key' => 'accounting', 'label' => 'Accounting', 'icon' => 'book', 'can' => 'ledger.view', 'items' => [
-        ['route' => 'accounting.ledger', 'label' => 'Ledger'],
-        ['route' => 'accounting.accounts', 'label' => 'Accounts'],
-        ['route' => 'accounting.tally-export', 'label' => 'Tally Export'],
-    ]],
     ['type' => 'link', 'route' => 'notifications.queue', 'label' => 'Messages', 'icon' => 'bell', 'badge' => $pendingMessages],
-    ['key' => 'loyalty', 'label' => 'Loyalty', 'icon' => 'star', 'can' => 'loyalty.manage', 'items' => [
-        ['route' => 'loyalty.award', 'label' => 'Award Points'],
-        ['route' => 'loyalty.ledger', 'label' => 'Points Ledger'],
-    ]],
     ['key' => 'installments', 'label' => 'Installments', 'icon' => 'calendar', 'can' => 'customer.manage', 'items' => [
         ['route' => 'installments.enrol', 'label' => 'Scheme Enrolment'],
         ['route' => 'installments.monthly-status', 'label' => 'Monthly Status'],
@@ -90,8 +81,7 @@ $nav = [
         ['route' => 'admin.employees', 'label' => 'Employees', 'can' => 'employee.manage'],
         ['route' => 'admin.users', 'label' => 'Users', 'can' => 'user.manage'],
         ['route' => 'admin.roles', 'label' => 'Roles & Permissions', 'can' => 'role.manage'],
-        ['route' => 'admin.loyalty-settings', 'label' => 'Loyalty Settings', 'can' => 'loyalty.manage'],
-        ['route' => 'admin.referrals', 'label' => 'Referrals', 'can' => 'loyalty.manage'],
+        ['route' => 'admin.referrals', 'label' => 'Referrals', 'can' => 'referral.manage'],
         ['route' => 'admin.audit-log', 'label' => 'Audit Log', 'can' => 'audit.view'],
     ]],
 ];

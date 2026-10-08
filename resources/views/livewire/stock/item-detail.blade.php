@@ -178,7 +178,7 @@
                 </dl>
             </x-ui.card>
 
-            <x-stock.qr-panel :qr="$qr" :label="$item->label" type="piece" />
+            {{-- Per-piece QR stickers hidden: no reprinting for individual pieces (8 Oct change list, 4.4). --}}
         </aside>
     </div>
 

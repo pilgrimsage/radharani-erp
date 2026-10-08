@@ -22,7 +22,7 @@ use Livewire\Component;
  */
 class NewPurchaseEntry extends Component
 {
-    public string $purchaseType = 'finished_product';
+    public string $purchaseType = 'raw_material';
     public ?int $vendorId = null;
     public string $invoiceNumber = '';
     public string $totalWeight = '';

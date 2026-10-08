@@ -2,7 +2,7 @@
     <x-ui.page-header title="Packets" subtitle="Labelled groups of pieces. A packet sits inside a box and can move between boxes."
         :crumbs="[['label' => 'Stock', 'href' => route('stock.items')], ['label' => 'Packets']]">
         <x-slot:actions>
-            <x-ui.button variant="secondary" icon="scan" :href="route('stock.assign')">Assign items</x-ui.button>
+            <x-ui.button variant="secondary" icon="scan" :href="route('stock.assign')">Change item location</x-ui.button>
             <x-ui.button icon="plus" wire:click="create">New packet</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>

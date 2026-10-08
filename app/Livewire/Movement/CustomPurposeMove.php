@@ -102,8 +102,9 @@ class CustomPurposeMove extends Component
             'counterparty' => ['nullable', 'string', 'max:100'],
             'expectedReturn' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:255'],
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photo' => ['required', 'image', 'max:5120'],
         ], [
+            'photo.required' => 'Add a photo of what is going out.',
             'basket.required' => 'Add at least one piece.',
             'otherPurpose.required_if' => 'Say what it is going out for.',
         ]);
@@ -142,8 +143,11 @@ class CustomPurposeMove extends Component
         $this->validate([
             'returning' => ['required', 'array', 'min:1'],
             'note' => ['nullable', 'string', 'max:255'],
-            'photo' => ['nullable', 'image', 'max:5120'],
-        ], ['returning.required' => 'Tick the pieces that came back.']);
+            'photo' => ['required', 'image', 'max:5120'],
+        ], [
+            'returning.required' => 'Tick the pieces that came back.',
+            'photo.required' => 'Add a photo of what came back.',
+        ]);
 
         $open = Movement::openItemDispatches(['photo', 'custom'])->with('item')
             ->whereIn('id', array_map('intval', $this->returning))->get();

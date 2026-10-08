@@ -81,9 +81,6 @@
                     <button type="button" wire:click="openAssign" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12.5px] font-semibold text-ink-fg hover:text-white hover:bg-white/10">
                         <x-ui.icon name="package" :size="14" /> Move to packet
                     </button>
-                    <button type="button" wire:click="printSelectedQr" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12.5px] font-semibold text-ink-fg hover:text-white hover:bg-white/10">
-                        <x-ui.icon name="printer" :size="14" /> Print QR labels
-                    </button>
                     <button type="button" wire:click="clearSelection" class="ml-auto text-[12.5px] font-semibold text-ink-dim hover:text-white">Clear selection</button>
                 </div>
             </x-slot:bulk>

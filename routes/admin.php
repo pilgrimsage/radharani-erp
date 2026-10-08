@@ -22,11 +22,12 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::get('/roles', RoleManager::class)
         ->middleware('permission:role.manage')->name('admin.roles');
 
-    Route::get('/loyalty-settings', LoyaltySettingsManager::class)
-        ->middleware('permission:loyalty.manage')->name('admin.loyalty-settings');
+    // Hidden: Loyalty settings (8 Oct change list, 15.1)
+    // Route::get('/loyalty-settings', LoyaltySettingsManager::class)
+    //     ->middleware('permission:referral.manage')->name('admin.loyalty-settings');
 
     Route::get('/referrals', ReferralOverview::class)
-        ->middleware('permission:loyalty.manage')->name('admin.referrals');
+        ->middleware('permission:referral.manage')->name('admin.referrals');
 
     Route::get('/customers', CustomerManager::class)
         ->middleware('permission:customer.manage')->name('admin.customers');

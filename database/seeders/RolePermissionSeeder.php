@@ -14,7 +14,7 @@ class RolePermissionSeeder extends Seeder
             'sale.create', 'sale.approve', 'purchase.manage',
             'rate.update', 'ledger.view', 'ledger.manage',
             'employee.manage', 'user.manage', 'role.manage',
-            'audit.view', 'discount.manage', 'loyalty.manage', 'customer.manage',
+            'audit.view', 'discount.manage', 'referral.manage', 'customer.manage',
             'orders.manage', 'exchange.manage', 'website.manage',
         ];
 
@@ -28,7 +28,7 @@ class RolePermissionSeeder extends Seeder
             'manager' => [
                 'stock.manage', 'movement.create', 'movement.approve',
                 'sale.create', 'sale.approve', 'purchase.manage',
-                'discount.manage', 'audit.view', 'loyalty.manage', 'customer.manage',
+                'discount.manage', 'audit.view', 'referral.manage', 'customer.manage',
                 'orders.manage', 'exchange.manage', 'website.manage',
             ],
 
