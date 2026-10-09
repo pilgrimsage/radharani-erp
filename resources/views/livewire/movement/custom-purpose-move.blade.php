@@ -58,7 +58,7 @@
                             </x-ui.field>
                         </div>
 
-                        <x-movement.photo-upload :photo="$photo" label="Photo as it left" />
+                        <x-movement.photo-upload :photo="$photo" required label="Photo as it left" />
 
                         <x-ui.field label="Note" for="cp-note" error="note" optional>
                             <input id="cp-note" type="text" wire:model="note" maxlength="255" class="rj-input">
@@ -152,7 +152,7 @@
                     </div>
                     @error('returning') <p class="rj-error -mt-3"><x-ui.icon name="alert-triangle" :size="12" />{{ $message }}</p> @enderror
 
-                    <x-movement.photo-upload :photo="$photo" label="Photo as it came back" hint="Proof of condition. Compressed when saved." />
+                    <x-movement.photo-upload :photo="$photo" required label="Photo as it came back" hint="Proof of condition. Compressed when saved." />
 
                     <x-ui.field label="Note" for="cp-rnote" error="note" optional>
                         <input id="cp-rnote" type="text" wire:model="note" maxlength="255" class="rj-input">

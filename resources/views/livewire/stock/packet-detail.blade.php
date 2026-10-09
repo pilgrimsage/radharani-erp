@@ -27,7 +27,7 @@
                     </x-slot:actions>
                 @endif
                 @if ($items->isEmpty())
-                    <x-ui.empty-state icon="gem" title="Nothing in this packet" message="Add pieces by picking them here, or scan them in from Assign Items." compact>
+                    <x-ui.empty-state icon="gem" title="Nothing in this packet" message="Add pieces by picking them here, or scan them in from Change Item location." compact>
                         <x-ui.button size="sm" icon="plus" wire:click="openAdd">Add pieces</x-ui.button>
                         <x-ui.button size="sm" variant="secondary" icon="scan" :href="route('stock.assign')">Scan to assign</x-ui.button>
                     </x-ui.empty-state>

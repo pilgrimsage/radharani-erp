@@ -10,7 +10,6 @@
                 <div class="rj-code text-[14px] text-ink_text-primary">{{ $label }}</div>
                 <div class="text-[12px] text-ink_text-muted mt-0.5">Sticker code <span class="rj-code text-[11.5px] text-ink_text-secondary">{{ $qr->code }}</span></div>
                 <div class="text-[12px] text-ink_text-muted">Issued {{ $qr->created_at?->format('d M Y') }}</div>
-                <x-ui.button variant="secondary" size="sm" icon="printer" class="mt-3" :href="route('stock.qr.print', ['ids' => $qr->id])" target="_blank">Print label</x-ui.button>
             </div>
         </div>
     @else

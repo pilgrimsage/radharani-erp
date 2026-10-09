@@ -208,7 +208,6 @@
                 </td>
                 <td class="text-[12.5px] text-ink_text-secondary whitespace-nowrap">{{ $qr->created_at?->format('d M Y, g:i a') }}</td>
                 <td class="text-right">
-                    <x-ui.button variant="secondary" size="sm" icon="printer" :href="route('stock.qr.print', ['ids' => $qr->id])" target="_blank">Print</x-ui.button>
                 </td>
             </tr>
         @empty

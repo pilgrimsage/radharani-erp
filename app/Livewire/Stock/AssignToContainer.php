@@ -361,6 +361,6 @@ class AssignToContainer extends Component
                 'success' => collect($this->log)->where('tone', 'success')->where('undone', false)->count(),
                 'error' => collect($this->log)->where('tone', 'error')->count(),
             ],
-        ])->layout('components.layouts.app', ['title' => 'Assign Items · Radharani Jewellery']);
+        ])->layout('components.layouts.app', ['title' => 'Change Item location · Radharani Jewellery']);
     }
 }

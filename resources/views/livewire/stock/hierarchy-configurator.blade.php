@@ -205,7 +205,7 @@
                                 <x-ui.status :status="$it->status" size="sm" class="shrink-0 hidden sm:inline-flex" />
                             </li>
                         @empty
-                            <li><x-ui.empty-state icon="gem" title="No pieces here" message="Drag pieces onto this packet from another packet, or use Assign Items to scan them in." compact /></li>
+                            <li><x-ui.empty-state icon="gem" title="No pieces here" message="Drag pieces onto this packet from another packet, or use Change Item location to scan them in." compact /></li>
                         @endforelse
                     </ul>
                 @endif

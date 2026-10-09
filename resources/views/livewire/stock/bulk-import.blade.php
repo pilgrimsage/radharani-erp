@@ -220,7 +220,7 @@
                     <x-ui.icon name="check" :size="30" />
                 </div>
                 <h2 class="font-display text-[32px] font-semibold mt-5">{{ count($createdIds) }} {{ \Illuminate\Support\Str::plural('piece', count($createdIds)) }} added to stock</h2>
-                <p class="text-[13.5px] text-ink_text-secondary mt-1">Each one has its own history starting today. Print their QR labels now, or later from QR Codes.</p>
+                <p class="text-[13.5px] text-ink_text-secondary mt-1">Each one has its own history starting today.</p>
 
                 @if ($created->isNotEmpty())
                     <div class="flex flex-wrap justify-center gap-1.5 mt-6">
@@ -234,8 +234,7 @@
                 @endif
 
                 <div class="flex flex-wrap justify-center gap-2.5 mt-8">
-                    <x-ui.button icon="printer" wire:click="printLabels">Print their QR labels</x-ui.button>
-                    <x-ui.button variant="secondary" icon="gem" :href="route('stock.items')">Go to inventory</x-ui.button>
+                    <x-ui.button icon="gem" :href="route('stock.items')">Go to inventory</x-ui.button>
                     <x-ui.button variant="ghost" icon="upload" wire:click="startOver">Import another file</x-ui.button>
                 </div>
             </x-ui.card>

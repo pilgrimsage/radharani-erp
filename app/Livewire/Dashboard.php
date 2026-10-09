@@ -10,7 +10,6 @@ use App\Models\Movement\Movement;
 use App\Models\Movement\RateLog;
 use App\Models\Notification\PendingNotification;
 use App\Models\Orders\Order;
-use App\Models\Purchase\Purchase;
 use App\Models\Purchase\PurchaseItem;
 use App\Models\Sales\Sale;
 use App\Models\Stock\Item;
@@ -19,12 +18,11 @@ use App\Support\Trackables;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
  * The landing page after staff sign in: today's rates, what needs someone's
- * attention, where the stock physically is, and how sales are trending.
+ * attention, where the stock physically is.
  *
  * Read-only by design. Every number links to the screen where the work is
  * actually done, and each panel is gated on the same permission as that
@@ -32,8 +30,6 @@ use Livewire\Component;
  */
 class Dashboard extends Component
 {
-    public const RANGES = [7, 30, 90];
-
     // Where a piece can be while it's out of the shop, in display order.
     private const OUT_PAIRS = [
         'karigar' => 'With karigars',
@@ -43,21 +39,10 @@ class Dashboard extends Component
         'melt' => 'At melting',
     ];
 
-    #[Url(except: 30)]
-    public int $range = 30;
-
-    public function setRange(int $days): void
-    {
-        if (in_array($days, self::RANGES, true)) {
-            $this->range = $days;
-        }
-    }
-
     public function render()
     {
         $user = auth()->user();
         $can = fn (string ...$perms) => $user && $user->canAny($perms);
-        $finance = $can('sale.approve', 'ledger.view', 'audit.view');
 
         $rates = $this->rates();
         $stock = $this->stock($rates);
@@ -68,9 +53,6 @@ class Dashboard extends Component
             'rates' => $rates,
             'ratesStale' => $rates->isNotEmpty() && ! $rates->first()['at']?->isToday(),
             'canRates' => $can('rate.update') && Route::has('pricing.rates'),
-            'finance' => $finance,
-            'sales' => $finance ? $this->sales() : null,
-            'trend' => $finance ? $this->trend() : null,
             'stock' => $stock,
             'attention' => $attention,
             'pipeline' => $this->pipeline($can),
@@ -112,62 +94,6 @@ class Dashboard extends Component
             ->keyBy('metal');
     }
 
-    private function sales(): array
-    {
-        $today = Sale::whereDate('created_at', today());
-        $monthStart = now()->startOfMonth();
-        $sameDayLastMonth = now()->subMonthNoOverflow();
-        $lastMonth = Sale::whereBetween('created_at', [
-            $sameDayLastMonth->copy()->startOfMonth(), $sameDayLastMonth->copy()->endOfDay(),
-        ])->sum('total');
-        $month = (float) Sale::where('created_at', '>=', $monthStart)->sum('total');
-
-        return [
-            'today' => (float) (clone $today)->sum('total'),
-            'todayCount' => (clone $today)->count(),
-            'month' => $month,
-            'monthCount' => Sale::where('created_at', '>=', $monthStart)->count(),
-            'monthDelta' => $lastMonth > 0 ? ($month - $lastMonth) / $lastMonth * 100 : null,
-            'unverified' => (float) Sale::where('confirmed_by_accountant', false)->sum('total'),
-        ];
-    }
-
-    // Daily sales totals for the chart, one point per day including empty days.
-    private function trend(): array
-    {
-        $from = today()->subDays($this->range - 1);
-
-        $rows = Sale::where('created_at', '>=', $from)
-            ->selectRaw('DATE(created_at) as d, SUM(total) as total, COUNT(*) as n, SUM(confirmed_by_accountant = 0) as pending')
-            ->groupBy('d')
-            ->get()
-            ->keyBy('d');
-
-        $points = [];
-        for ($day = $from->copy(); $day->lte(today()); $day->addDay()) {
-            $row = $rows->get($day->toDateString());
-            $points[] = [
-                'date' => $day->toDateString(),
-                'label' => $day->format('D, j M'),
-                'short' => $day->format('j M'),
-                'total' => round((float) ($row->total ?? 0), 2),
-                'count' => (int) ($row->n ?? 0),
-                'pending' => (int) ($row->pending ?? 0),
-            ];
-        }
-
-        $total = array_sum(array_column($points, 'total'));
-        $count = array_sum(array_column($points, 'count'));
-
-        return [
-            'points' => $points,
-            'total' => $total,
-            'count' => $count,
-            'average' => $count ? $total / $count : 0,
-            'best' => collect($points)->sortByDesc('total')->first(),
-        ];
-    }
-
     // Where every piece the shop still owns is right now, plus its metal value.
     private function stock($rates): array
     {
@@ -187,8 +113,7 @@ class Dashboard extends Component
                 'metal' => $r->m,
                 'count' => (int) $r->n,
                 'weight' => (float) $r->w,
-                'value' => (float) $r->w * (float) ($rates[$r->m]['rate'] ?? 0),
-            ])->sortByDesc('value')->values();
+            ])->sortByDesc('weight')->values();
 
         // On the counter: the latest vault movement of the piece (or of its
         // packet / box) is a vault_out, and the piece is still in stock.
@@ -247,7 +172,6 @@ class Dashboard extends Component
             'overdue' => $out->sum('overdue'),
             'overdueKarigar' => $out['karigar']['overdue'],
             'overdueHallmark' => $out['hallmark']['overdue'],
-            'metalValue' => $byMetal->sum('value'),
             'byMetal' => $byMetal,
             'locations' => $locations->filter(fn ($l) => $l['count'] > 0),
             'statusCounts' => $byStatus->map(fn ($r) => (int) $r->n)->all(),
@@ -291,10 +215,18 @@ class Dashboard extends Component
             'detail' => 'Pieces past their expected return date.',
         ]);
 
+        // Everything physically outside the vault, wherever it is (counter, display,
+        // karigar, hallmarking, photos, anything else), so nothing is out unnoticed.
+        $outOfVault = $stock['locations']->only(['counter', 'karigar', 'hallmark', 'photo', 'custom', 'melt', 'other']);
+        $add(true, 'reports.location', (int) $outOfVault->sum('count'), [
+            'tone' => 'warning', 'icon' => 'layers', 'title' => 'Pieces out of the vault',
+            'detail' => $outOfVault->map(fn ($l) => $l['count'] . ' ' . strtolower($l['label']))->implode(', ') . '.',
+        ]);
+
         $unverified = Sale::where('confirmed_by_accountant', false);
         $add($can('sale.approve'), 'sales.verification', (clone $unverified)->count(), [
             'tone' => 'warning', 'icon' => 'receipt', 'title' => 'Sales to verify',
-            'detail' => '₹' . self::inr((float) (clone $unverified)->sum('total')) . ' held as reserved until confirmed.',
+            'detail' => 'Held as reserved until confirmed.',
         ]);
 
         $add($can('movement.approve'), 'movements.pending-review', $stock['statusCounts']['pending_review'] ?? 0, [
@@ -330,17 +262,12 @@ class Dashboard extends Component
             ->whereDoesntHave('payments', fn ($q) => $q->whereYear('paid_on', now()->year)->whereMonth('paid_on', now()->month));
         $add($can('customer.manage'), 'installments.monthly-status', (clone $unpaidSchemes)->count(), [
             'tone' => 'info', 'icon' => 'calendar', 'title' => 'Instalments due this month',
-            'detail' => '₹' . self::inr((float) (clone $unpaidSchemes)->sum('monthly_amount')) . ' not yet paid for ' . now()->format('F') . '.',
+            'detail' => 'Not yet paid for ' . now()->format('F') . '.',
         ]);
 
         $add($can('exchange.manage'), 'exchange.valuation', ExchangeTransaction::where('stage', 'tested')->count(), [
             'tone' => 'info', 'icon' => 'scale', 'title' => 'Exchanges ready to value',
             'detail' => 'Purity tested, waiting for the final valuation.',
-        ]);
-
-        $add($can('purchase.manage'), 'purchases.list', Purchase::where('payment_status', '!=', 'paid')->count(), [
-            'tone' => 'neutral', 'icon' => 'wallet', 'title' => 'Unpaid vendor bills',
-            'detail' => 'Purchases marked pending or part-paid.',
         ]);
 
         $rank = ['danger' => 0, 'warning' => 1, 'info' => 2, 'neutral' => 3];
@@ -402,8 +329,8 @@ class Dashboard extends Component
                 'at' => $s->created_at,
                 'icon' => 'receipt',
                 'title' => $s->confirmed_by_accountant ? 'Sale verified' : 'Sale entered',
-                'code' => '₹' . self::inr((float) $s->total),
-                'detail' => $s->customer->name ?? null,
+                'code' => $s->customer->name ?? 'Walk-in',
+                'detail' => null,
                 'by' => $s->creator->name ?? 'Unknown',
                 'url' => Route::has('sales.invoice') ? route('sales.invoice', $s) : null,
             ]);
@@ -411,17 +338,42 @@ class Dashboard extends Component
         return $rows->concat($sales)->sortByDesc('at')->take(8)->values();
     }
 
+    // One tile per kind of entry. 'count' is today's entries where that is cheap to
+    // know; tiles without one are plain "add" shortcuts.
     private function quickActions(callable $can): array
     {
+        $moves = Movement::whereDate('created_at', today())->selectRaw('movement_type, COUNT(*) as n')
+            ->groupBy('movement_type')->pluck('n', 'movement_type');
+        $sum = fn (string ...$types) => (int) collect($types)->sum(fn ($t) => $moves[$t] ?? 0);
+
         return collect([
-            ['route' => 'sales.new', 'label' => 'New sale', 'icon' => 'receipt', 'can' => 'sale.create'],
+            ['route' => 'sales.new', 'label' => 'New sale', 'icon' => 'receipt', 'can' => 'sale.create',
+                'count' => Sale::whereDate('created_at', today())->count()],
             ['scan' => true, 'label' => 'Scan a tag', 'icon' => 'scan'],
-            ['route' => 'movements.vault-counter', 'label' => 'Vault ↔ Counter', 'icon' => 'repeat'],
-            ['route' => 'movements.karigar-dispatch', 'label' => 'Send to karigar', 'icon' => 'truck'],
-            ['route' => 'orders.new', 'label' => 'New order', 'icon' => 'clipboard', 'can' => 'orders.manage'],
-            ['route' => 'exchange.new', 'label' => 'Old gold exchange', 'icon' => 'flame', 'can' => 'exchange.manage'],
+            ['route' => 'movements.vault-counter', 'label' => 'Vault ↔ Counter', 'icon' => 'repeat',
+                'count' => $sum('vault_out', 'vault_in')],
+            ['route' => 'movements.karigar-dispatch', 'label' => 'Karigar send', 'icon' => 'truck',
+                'count' => $sum('karigar_out') + KarigarRawBatch::whereDate('created_at', today())->count()],
+            ['route' => 'movements.karigar-return', 'label' => 'Karigar receive', 'icon' => 'package',
+                'count' => $sum('karigar_in')],
+            ['route' => 'movements.hallmark-dispatch', 'label' => 'Hallmark send', 'icon' => 'truck',
+                'count' => $sum('hallmark_out')],
+            ['route' => 'movements.hallmark-return', 'label' => 'Hallmark receive', 'icon' => 'package',
+                'count' => $sum('hallmark_in')],
+            ['route' => 'movements.custom-purpose', 'label' => 'Photo / other purpose', 'icon' => 'camera',
+                'count' => $sum('photo_out', 'photo_in', 'custom_out', 'custom_in')],
+            ['route' => 'movements.pending-review', 'label' => 'Pending review', 'icon' => 'user-check', 'can' => 'movement.approve'],
+            ['route' => 'orders.new', 'label' => 'New order', 'icon' => 'clipboard', 'can' => 'orders.manage',
+                'count' => Order::whereDate('created_at', today())->count()],
+            ['route' => 'exchange.new', 'label' => 'Old gold exchange', 'icon' => 'flame', 'can' => 'exchange.manage',
+                'count' => ExchangeTransaction::whereDate('created_at', today())->count()],
+            ['route' => 'exchange.refinery.send', 'label' => 'Refinery send', 'icon' => 'flame', 'can' => 'exchange.manage',
+                'count' => RefineryBatch::whereDate('sent_at', today())->count()],
+            ['route' => 'exchange.refinery.return', 'label' => 'Refinery receive', 'icon' => 'flame', 'can' => 'exchange.manage',
+                'count' => RefineryBatch::whereDate('returned_at', today())->count()],
+            ['route' => 'purchases.new', 'label' => 'Raw-material purchase', 'icon' => 'cart', 'can' => 'purchase.manage'],
+            ['route' => 'pricing.rates', 'label' => 'Daily rates', 'icon' => 'coins', 'can' => 'rate.update'],
             ['route' => 'stock.items', 'label' => 'Inventory', 'icon' => 'gem', 'can' => 'stock.manage'],
-            ['route' => 'purchases.new', 'label' => 'New purchase', 'icon' => 'cart', 'can' => 'purchase.manage'],
         ])
             ->filter(fn ($a) => (empty($a['can']) || $can($a['can'])) && (! empty($a['scan']) || Route::has($a['route'])))
             ->map(fn ($a) => $a + ['href' => isset($a['route']) ? route($a['route']) : null])

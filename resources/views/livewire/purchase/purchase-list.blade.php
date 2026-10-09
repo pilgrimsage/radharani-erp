@@ -2,7 +2,6 @@
     <x-ui.page-header title="Purchases" subtitle="Payment status is fixed at entry and cannot be edited here — see note below."
         :crumbs="[['label' => 'Purchases & Vendors', 'href' => route('purchases.list')], ['label' => 'Purchases']]">
         <x-slot:actions>
-            <x-ui.button variant="secondary" icon="building" :href="route('purchases.vendors')">Vendors</x-ui.button>
             <x-ui.button icon="plus" :href="route('purchases.new')">New purchase</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
