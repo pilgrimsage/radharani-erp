@@ -7,7 +7,7 @@ use Livewire\Component;
 
 /**
  * Customer portal: My account. Read-only view of the signed-in customer's
- * own purchases, loyalty points, instalment schemes and referrals, inside
+ * own purchases, instalment schemes and referrals, inside
  * the public website's layout.
  */
 class CustomerDashboard extends Component

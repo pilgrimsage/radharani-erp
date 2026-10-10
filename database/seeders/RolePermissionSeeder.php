@@ -12,9 +12,9 @@ class RolePermissionSeeder extends Seeder
         $permissions = [
             'stock.manage', 'movement.create', 'movement.approve',
             'sale.create', 'sale.approve', 'purchase.manage',
-            'rate.update', 'ledger.view', 'ledger.manage',
+            'rate.update',
             'employee.manage', 'user.manage', 'role.manage',
-            'audit.view', 'discount.manage', 'referral.manage', 'customer.manage',
+            'audit.view', 'referral.manage', 'customer.manage',
             'orders.manage', 'exchange.manage', 'website.manage', 'location.manage', 'category.manage', 'stock.audit',
         ];
 
@@ -28,12 +28,12 @@ class RolePermissionSeeder extends Seeder
             'manager' => [
                 'stock.manage', 'movement.create', 'movement.approve',
                 'sale.create', 'sale.approve', 'purchase.manage',
-                'discount.manage', 'audit.view', 'referral.manage', 'customer.manage',
+                'audit.view', 'referral.manage', 'customer.manage',
                 'orders.manage', 'exchange.manage', 'website.manage', 'stock.audit',
             ],
 
             'accountant' => [
-                'sale.create', 'sale.approve', 'purchase.manage', 'ledger.view',
+                'sale.create', 'sale.approve', 'purchase.manage',
             ],
 
             'counter_staff' => [

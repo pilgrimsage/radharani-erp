@@ -32,6 +32,10 @@ These supersede the original requirement document wherever they conflict with it
 17. Sorting/filtering for stock must support, at minimum: category, box, and metal type (`items.metal`).
 18. Staff login uses phone number or email (not phone-only — phone-only login is reserved for the customer portal).
 
+## Changes confirmed after the meeting of 2 October 2026
+
+The detailed change list of 8 October 2026 (`docs/feedback-2026-10-02/Radharani-ERP-Detailed-Change-List-2026-10-08.docx`) is implemented. In short: GST, invoices, the accounting module, vendors and Loyalty are removed; money disappears from the dashboard; locations, categories (metal then subcategory) and batches are owner-managed or timestamped; Karigar and Hallmarking are one screen each with part receipts, advances, payments and ledgers; Sales is a step form with part payments, a vault check and the Tally bill number at verification; pricing is per carat with rules by product, category or price range; Exchange is resumable and locked once settled; Referral replaces Loyalty.
+
 ## Design decisions made on this project (not client-specified, but adopted)
 
 - Karigar raw-material flow gets its own tables (`karigar_raw_batches`), separate from the standard symmetric `movements` pattern, because what leaves and what returns are not the same physical thing (batch-out, one-or-many-items-back).
@@ -42,6 +46,9 @@ These supersede the original requirement document wherever they conflict with it
 - Loyalty is a points ledger (`loyalty_transactions`), not issued/redeemed codes; redemption happens as a field inside the Billing screen, not a separate page.
 
 ## Still open — genuinely unresolved, needs client input
+
+(Updated 8 October 2026.) The client still owes: the Excel sheet showing their pricing calculation (pricing is provisional), the Google review link for the sale message, the uncollected-order expiry timing, and the referral points rules (the owner sets numbers in the ERP, but the automatic award mechanism is still to be designed). The items below are the older list and are kept for context.
+
 
 - **Karigar raw-material batch mechanics**: does one raw-material dispatch always split cleanly, and who assigns the new item's tag on return? Current implementation supports exactly one new item per raw-material return (not a repeatable multi-piece split) pending this answer.
 - **Vendor payable trigger**: does a karigar raw-material dispatch automatically create an amount owed to that karigar, or is that always a separate manual purchase entry? Not automated either way yet.

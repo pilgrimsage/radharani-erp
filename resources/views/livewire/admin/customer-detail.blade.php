@@ -4,7 +4,7 @@
 
     <div class="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
         <x-ui.stat-card icon="coins" label="Exchange balance" :value="'₹'.number_format($customer->balance, 2)" />
-        <x-ui.stat-card icon="gift" label="Loyalty points" :value="number_format($customer->loyalty_points)" />
+        <x-ui.stat-card icon="gift" label="Referral code" :value="$customer->referral_code ?: 'None'" />
         <x-ui.stat-card icon="user-check" label="Status" :value="strtoupper(str_replace('_', ' ', $customer->status))" />
     </div>
 

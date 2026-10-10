@@ -16,10 +16,10 @@ class Sale extends Model
     // Eloquent's default date-casting too — without this, ->created_at is
     // a raw string and every ->format() call on it (SalesHistory,
     // InvoiceView, the portal dashboard) fatal-errors.
-    protected $casts = ['additional_charges' => 'array', 'payment_modes' => 'array', 'created_at' => 'datetime'];
+    protected $casts = ['additional_charges' => 'array', 'created_at' => 'datetime'];
     protected $fillable = [
-        'customer_id', 'referral_customer_id', 'invoice_number', 'type', 'cgst', 'sgst', 'igst',
-        'additional_charges', 'discount', 'adjustment_type', 'adjustment_value', 'payment_modes', 'accountant_note',
+        'customer_id', 'referral_customer_id', 'invoice_number', 'type',
+        'additional_charges', 'discount', 'adjustment_type', 'adjustment_value', 'accountant_note',
         'order_override_note', 'total', 'confirmed_by_accountant', 'created_by',
     ];
 

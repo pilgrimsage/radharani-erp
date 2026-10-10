@@ -11,7 +11,7 @@ use Livewire\Component;
  * Pending Messages Queue — real data.
  *
  * WhatsApp auto-send is not being integrated this phase: every
- * customer-facing notification (sale confirmation, order ready, loyalty
+ * customer-facing notification (sale confirmation, order ready, scheme welcome
  * award, instalment reminder, exchange valuation ready) is generated here
  * as a copyable message. Staff copies it and sends it manually (WhatsApp,
  * SMS, whatever), then marks it "sent" in this log.

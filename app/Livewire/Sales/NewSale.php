@@ -453,7 +453,6 @@ class NewSale extends Component
                 'referral_customer_id' => $this->referralCustomerId,
                 'invoice_number' => 'RESV-' . now()->format('YmdHis') . '-' . $this->customerId, // the Tally bill number replaces it at verification
                 'type' => 'sale',
-                'cgst' => 0, 'sgst' => 0, 'igst' => 0,
                 'additional_charges' => $extras ?: null,
                 'discount' => $adjustment,
                 'adjustment_type' => $adjustment > 0 ? $this->adjustType : null,

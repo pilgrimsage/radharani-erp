@@ -13,7 +13,7 @@ class Customer extends Authenticatable
 
     protected $fillable = [
         'name', 'phone', 'address', 'email', 'password', 'gstin', 'balance', 'status',
-        'loyalty_points', 'referral_code', 'referral_opted_at', 'referred_by', 'imported_from_tally',
+        'referral_code', 'referral_opted_at', 'referred_by', 'imported_from_tally',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -21,11 +21,6 @@ class Customer extends Authenticatable
     public function sales()
     {
         return $this->hasMany(\App\Models\Sales\Sale::class);
-    }
-
-    public function loyaltyTransactions()
-    {
-        return $this->hasMany(LoyaltyTransaction::class);
     }
 
     public function installmentSchemes()

@@ -30,7 +30,7 @@ class MessageTemplates
             'order_to_hallmarking' => 'Sent to hallmarking',
             'order_ready' => 'Ready to collect',
         ],
-        'Other' => ['loyalty_award' => 'Points awarded', 'exchange_valuation_ready' => 'Exchange valuation ready', 'other' => 'Other'],
+        'Other' => ['exchange_valuation_ready' => 'Exchange valuation ready', 'other' => 'Other'],
     ];
 
     public static function label(string $type): string
@@ -74,7 +74,7 @@ class MessageTemplates
     public static function saleConfirmation(Sale $sale): string
     {
         $parts = $sale->exists ? $sale->payments->map(fn ($p) => ['mode' => $p->mode, 'amount' => $p->amount])->all() : [];
-        $paid = self::paymentText($parts ?: $sale->payment_modes);
+        $paid = self::paymentText($parts);
         $review = config('shop.review_link');
 
         return "Thank you for your purchase from Radharani Jewellery Works. Your bill of ₹" . number_format((float) $sale->total) . ' is confirmed'

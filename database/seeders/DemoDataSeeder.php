@@ -2,23 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Accounting\Account;
-use App\Models\Accounting\Transaction;
 use App\Models\Customer\Customer;
 use App\Models\Customer\CustomerMaterialJob;
 use App\Models\Customer\InstallmentPayment;
 use App\Models\Customer\InstallmentScheme;
-use App\Models\Customer\LoyaltyTransaction;
 use App\Models\Employee;
 use App\Models\Exchange\ExchangeTransaction;
 use App\Models\Exchange\RefineryBatch;
 use App\Models\Movement\KarigarRawBatch;
 use App\Models\Movement\Movement;
+use App\Models\Movement\RawMetalEntry;
+use App\Models\Pricing\PricingRule;
+use App\Models\Sales\SalePayment;
 use App\Models\Movement\RateLog;
 use App\Models\Notification\PendingNotification;
 use App\Models\Orders\Order;
-use App\Models\Pricing\DiscountRule;
-use App\Models\Pricing\GstRate;
 use App\Models\Purchase\Purchase;
 use App\Models\Purchase\PurchaseItem;
 use App\Models\Purchase\Vendor;
@@ -50,9 +48,8 @@ class DemoDataSeeder extends Seeder
         $this->seedMovements($items, $vendors, $owner);
         $this->seedPurchases($vendors, $items, $owner);
         $this->seedSales($customers, $items, $owner);
-        $this->seedLoyaltyAndInstallments($customers, $owner);
-        $this->seedDiscountsAndGst($owner);
-        $this->seedAccounts($owner);
+        $this->seedInstallments($customers);
+        $this->seedPricingRules($owner);
         $this->seedKarigarRawBatches($vendors, $owner);
         $this->seedCustomerMaterialJobs($customers, $vendors, $owner);
         $this->seedExchangeAndRefinery($customers, $owner);
@@ -95,22 +92,24 @@ class DemoDataSeeder extends Seeder
 
     private function seedRates(?User $owner): void
     {
-        if (RateLog::count() > 0) {
+        if (RateLog::whereNotNull('purity')->count() > 0) {
             return;
         }
 
-        $base = ['gold' => 7250.00, 'silver' => 92.50, 'titanium' => 18.00, 'platinum' => 3100.00];
+        // Rate per gram at one anchor carat, scaled to the others by fineness.
+        $anchor = ['gold' => ['22K', 7250.00], 'silver' => ['92.5', 92.50], 'platinum' => ['950', 3100.00], 'titanium' => ['Grade 5', 18.00]];
+        $fineness = ['gold' => ['24K' => 24, '22K' => 22, '18K' => 18, '14K' => 14], 'silver' => ['99.9' => 99.9, '92.5' => 92.5], 'platinum' => ['950' => 950, '900' => 900], 'titanium' => ['Grade 5' => 1, 'Grade 2' => 1]];
 
         for ($day = 6; $day >= 0; $day--) {
-            foreach ($base as $metal => $rate) {
+            foreach ($anchor as $metal => [$carat, $rate]) {
                 $drift = $rate * (mt_rand(-150, 150) / 10000);
-                RateLog::create([
-                    'metal' => $metal,
-                    'rate' => round($rate + $drift, 2),
-                    'source' => 'manual',
-                    'updated_by' => $owner?->id,
-                    'created_at' => now()->subDays($day),
-                ]);
+                foreach ($fineness[$metal] as $c => $f) {
+                    RateLog::create([
+                        'metal' => $metal, 'purity' => $c,
+                        'rate' => round(($rate + $drift) * $f / $fineness[$metal][$carat], 2),
+                        'source' => 'manual', 'updated_by' => $owner?->id, 'created_at' => now()->subDays($day),
+                    ]);
+                }
             }
         }
     }
@@ -141,13 +140,12 @@ class DemoDataSeeder extends Seeder
         $defs = [
             ['name' => 'Rajesh Karigar', 'type' => 'karigar', 'phone' => '9831000001'],
             ['name' => 'Mohan Karigar', 'type' => 'karigar', 'phone' => '9831000002'],
-            ['name' => 'Bengal Gold Suppliers', 'type' => 'supplier', 'phone' => '9831000003'],
             ['name' => 'City Hallmarking Centre', 'type' => 'hallmark_center', 'phone' => '9831000004'],
         ];
 
         return collect($defs)->map(fn ($d) => Vendor::firstOrCreate(
             ['phone' => $d['phone']],
-            ['name' => $d['name'], 'type' => $d['type'], 'balance' => 0]
+            ['name' => $d['name'], 'type' => $d['type']]
         ));
     }
 
@@ -169,14 +167,12 @@ class DemoDataSeeder extends Seeder
                     'password' => bcrypt('password'),
                     'balance' => 0,
                     'status' => 'past_customer',
-                    'loyalty_points' => 0,
-                    'referral_code' => strtoupper(substr(md5($phone), 0, 6)),
                 ]
             ));
         }
 
-        // One referral relationship for the Referral Overview screen.
-        $customers[1]->update(['referred_by' => $customers[0]->id]);
+        // One customer has opted in to the referral programme (codes are opt-in).
+        $customers[0]->update(['referral_code' => 'DEMO01', 'referral_opted_at' => now()]);
 
         return $customers;
     }
@@ -289,32 +285,14 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        $supplier = $vendors->firstWhere('type', 'supplier');
-        $karigar = $vendors->firstWhere('type', 'karigar');
-
-        $finished = Purchase::create([
-            'vendor_id' => $supplier->id, 'type' => 'finished_product',
-            'invoice_number' => 'PINV-1001', 'total_amount' => 185000, 'gst' => 5550,
-            'payment_status' => 'paid', 'created_by' => $owner->id,
-        ]);
-        foreach ($items->take(2) as $item) {
-            PurchaseItem::create([
-                'purchase_id' => $finished->id, 'item_id' => $item->id,
-                'rate' => 7200, 'weight' => $item->weight, 'tag_pending' => false,
-            ]);
-        }
-
+        // Raw material only: a bill reference, notes and the metal that came in.
         $raw = Purchase::create([
-            'vendor_id' => $karigar->id, 'type' => 'raw_material',
-            'total_weight' => 50.000, 'total_amount' => 362500,
-            'payment_status' => 'partial', 'created_by' => $owner->id,
+            'type' => 'raw_material', 'invoice_number' => 'RM-1001', 'notes' => 'Fine gold from the refiner',
+            'total_weight' => 50.000, 'created_by' => $owner->id,
         ]);
-        PurchaseItem::create([
-            'purchase_id' => $raw->id, 'item_id' => null,
-            'description' => 'Raw gold, 22K, awaiting tagging',
-            'category' => 'Raw Material', 'metal' => 'gold', 'purity' => '22K',
-            'rate' => 7250, 'weight' => 50.000, 'tag_pending' => true,
-        ]);
+        PurchaseItem::create(['purchase_id' => $raw->id, 'item_id' => null, 'description' => 'Fine gold', 'metal' => 'gold', 'purity' => '24K', 'weight' => 50.000, 'tag_pending' => false]);
+        RawMetalEntry::create(['metal' => 'gold', 'purity' => '24K', 'weight' => 50.000, 'source_type' => 'purchase', 'source_id' => $raw->id, 'user_id' => $owner->id]);
+        RawMetalEntry::create(['metal' => 'gold', 'purity' => '22K', 'weight' => 40.000, 'source_type' => 'adjustment', 'note' => 'Opening balance', 'user_id' => $owner->id]);
     }
 
     private function seedSales(\Illuminate\Support\Collection $customers, \Illuminate\Support\Collection $items, ?User $owner): void
@@ -324,8 +302,8 @@ class DemoDataSeeder extends Seeder
         }
 
         $verified = Sale::create([
-            'customer_id' => $customers[0]->id, 'invoice_number' => 'INV-2026-0001',
-            'type' => 'sale', 'cgst' => 900, 'sgst' => 900, 'total' => 38800,
+            'customer_id' => $customers[0]->id, 'invoice_number' => 'TALLY-0001',
+            'type' => 'sale', 'total' => 37000,
             'confirmed_by_accountant' => true, 'created_by' => $owner->id,
         ]);
         $soldItem = $items->where('status', 'in_stock')->skip(4)->first();
@@ -333,6 +311,8 @@ class DemoDataSeeder extends Seeder
             DB::table('sale_items')->insert(['sale_id' => $verified->id, 'item_id' => $soldItem->id, 'price_at_sale' => 37000]);
             $soldItem->update(['status' => 'sold']);
         }
+        SalePayment::create(['sale_id' => $verified->id, 'mode' => 'cash', 'amount' => 20000, 'user_id' => $owner->id]);
+        SalePayment::create(['sale_id' => $verified->id, 'mode' => 'upi', 'amount' => 17000, 'user_id' => $owner->id]);
 
         $pendingSale = Sale::create([
             'customer_id' => $customers[1]->id, 'invoice_number' => 'RESV-'.now()->format('YmdHis'),
@@ -343,70 +323,32 @@ class DemoDataSeeder extends Seeder
         if ($reservedItem) {
             DB::table('sale_items')->insert(['sale_id' => $pendingSale->id, 'item_id' => $reservedItem->id, 'price_at_sale' => 24500]);
         }
+        SalePayment::create(['sale_id' => $pendingSale->id, 'mode' => 'cash', 'amount' => 10000, 'user_id' => $owner->id]);
     }
 
-    private function seedLoyaltyAndInstallments(\Illuminate\Support\Collection $customers, ?User $owner): void
+    private function seedInstallments(\Illuminate\Support\Collection $customers): void
     {
-        if (LoyaltyTransaction::count() === 0) {
-            LoyaltyTransaction::create(['customer_id' => $customers[0]->id, 'points' => 388, 'reason' => 'purchase']);
-            LoyaltyTransaction::create(['customer_id' => $customers[1]->id, 'points' => 100, 'reason' => 'referral']);
-            $customers[0]->update(['loyalty_points' => 388]);
-            $customers[1]->update(['loyalty_points' => 100]);
-        }
-
         if (InstallmentScheme::count() === 0) {
             $scheme = InstallmentScheme::create([
-                'customer_id' => $customers[2]->id, 'monthly_amount' => 5000,
-                'months_paid' => 2, 'start_date' => now()->subMonths(2), 'status' => 'active',
+                'customer_id' => $customers[2]->id, 'monthly_amount' => 5000, 'total_months' => 12,
+                'months_paid' => 2, 'opening_pending_amount' => 60000, 'start_date' => now()->subMonths(2), 'status' => 'active',
             ]);
             InstallmentPayment::create(['scheme_id' => $scheme->id, 'amount' => 5000, 'paid_on' => now()->subMonths(2)]);
             InstallmentPayment::create(['scheme_id' => $scheme->id, 'amount' => 5000, 'paid_on' => now()->subMonth()]);
         }
     }
 
-    private function seedDiscountsAndGst(?User $owner): void
+    private function seedPricingRules(?User $owner): void
     {
-        if (DiscountRule::count() === 0 && $owner) {
-            DiscountRule::create([
-                'scope' => 'category', 'category' => 'Chain', 'discount_type' => 'percentage',
-                'value' => 5, 'active' => true, 'created_by' => $owner->id,
-            ]);
-        }
-
-        if (GstRate::count() === 0) {
-            foreach (['Necklace' => 3, 'Ring' => 3, 'Bangle' => 3, 'Chudi' => 3, 'Chain' => 3] as $cat => $rate) {
-                GstRate::create(['category' => $cat, 'rate_percent' => $rate]);
-            }
-        }
-    }
-
-    private function seedAccounts(?User $owner): void
-    {
-        // firstOrCreate per account (not a single Account::count() guard) so
-        // this stays correct even if only some of the standard accounts
-        // exist already — e.g. a custom account created by hand beforehand.
-        $cash = Account::firstOrCreate(['name' => 'Cash'], ['type' => 'asset']);
-        $bank = Account::firstOrCreate(['name' => 'Bank'], ['type' => 'asset']);
-        $salesIncome = Account::firstOrCreate(['name' => 'Sales Income'], ['type' => 'income']);
-        $purchases = Account::firstOrCreate(['name' => 'Purchases'], ['type' => 'expense']);
-        $payable = Account::firstOrCreate(['name' => 'Accounts Payable'], ['type' => 'liability']);
-
-        // Auto-posting from Sale/Purchase isn't wired yet (still open, see
-        // CLAUDE.md) — these are a handful of sample rows so Ledger View
-        // isn't permanently empty during review, not a real posting log.
-        if (! $owner || Transaction::count() > 0) {
+        if (PricingRule::where('kind', '!=', 'hallmark')->count() > 0 || ! $owner) {
             return;
         }
 
-        foreach ([
-            ['account_id' => $bank->id, 'reference_type' => 'sale', 'debit' => 48500, 'credit' => 0, 'note' => 'Sample sale receipt'],
-            ['account_id' => $salesIncome->id, 'reference_type' => 'sale', 'debit' => 0, 'credit' => 48500, 'note' => 'Sample sale income'],
-            ['account_id' => $purchases->id, 'reference_type' => 'purchase', 'debit' => 32000, 'credit' => 0, 'note' => 'Sample purchase'],
-            ['account_id' => $payable->id, 'reference_type' => 'purchase', 'debit' => 0, 'credit' => 32000, 'note' => 'Sample vendor payable'],
-            ['account_id' => $cash->id, 'reference_type' => 'manual', 'debit' => 5000, 'credit' => 0, 'note' => 'Petty cash top-up'],
-        ] as $t) {
-            Transaction::create($t + ['created_by' => $owner->id]);
-        }
+        // Making charge by price range, a category rate that beats it, one discount.
+        PricingRule::create(['kind' => 'making', 'scope' => 'price_range', 'min_value' => 0, 'max_value' => 50000, 'calc' => 'percentage', 'value' => 12, 'created_by' => $owner->id]);
+        PricingRule::create(['kind' => 'making', 'scope' => 'price_range', 'min_value' => 50000, 'calc' => 'percentage', 'value' => 10, 'created_by' => $owner->id]);
+        PricingRule::create(['kind' => 'making', 'scope' => 'category', 'category' => 'Bangle', 'metal' => 'gold', 'calc' => 'per_gram', 'value' => 450, 'created_by' => $owner->id]);
+        PricingRule::create(['kind' => 'discount', 'scope' => 'category', 'category' => 'Chain', 'calc' => 'percentage', 'value' => 5, 'created_by' => $owner->id]);
     }
 
     private function seedKarigarRawBatches(\Illuminate\Support\Collection $vendors, ?User $owner): void
@@ -415,12 +357,14 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        KarigarRawBatch::create([
+        $batch = KarigarRawBatch::create([
             'vendor_id' => $vendors->firstWhere('type', 'karigar')->id,
-            'weight_out' => 20.000, 'metal' => 'gold', 'purity' => '22K',
-            'purpose_label' => 'New bangles batch', 'expected_return' => now()->addDays(7),
+            'weight_out' => 20.000, 'metal' => 'gold', 'description' => 'New bangles batch', 'purpose_label' => 'New bangles batch',
+            'categories' => ['Bangle'], 'pieces_expected' => 10, 'advance_cash' => 5000, 'advance_metal_weight' => 8.000,
+            'advance_metal_purity' => '22K', 'purity' => '22K', 'expected_return' => now()->addDays(7),
             'status' => 'dispatched', 'user_id' => $owner->id,
         ]);
+        RawMetalEntry::create(['metal' => 'gold', 'purity' => '22K', 'weight' => -8.000, 'source_type' => 'karigar_advance', 'source_id' => $batch->id, 'user_id' => $owner->id]);
     }
 
     private function seedCustomerMaterialJobs(\Illuminate\Support\Collection $customers, \Illuminate\Support\Collection $vendors, ?User $owner): void

@@ -20,7 +20,7 @@ $isStaff = $audience === 'staff';
 $heading ??= $isStaff ? 'Every piece, accounted for.' : 'Your jewellery, always in view.';
 $lede ??= $isStaff
     ? 'Stock, movements, karigar work and sales for Radharani Jewellery Works, in one place.'
-    : 'Orders, invoices, loyalty points and instalments from Radharani Jewellery Works.';
+    : 'Orders, purchases, referrals and instalments from Radharani Jewellery Works.';
 @endphp
 
 <div class="min-h-[100dvh] flex bg-surface-bg">

@@ -88,12 +88,13 @@
         @forelse ($sales as $sale)
             @php
                 $pending = ! $sale->confirmed_by_accountant;
-                $gst = (float) $sale->cgst + (float) $sale->sgst + (float) $sale->igst;
+                $paidIn = (float) $sale->payments()->sum('amount');
+                $balance = (float) $sale->total - $paidIn;
             @endphp
             <article class="pt-card pt-invoice" wire:key="sale-{{ $sale->id }}">
                 <header class="pt-invoice__head">
                     <div>
-                        <small>{{ $pending ? 'Being confirmed' : 'Invoice' }}</small>
+                        <small>{{ $pending ? 'Being confirmed' : 'Bill' }}</small>
                         <h3>{{ $pending ? 'Purchase on '.$sale->created_at?->format('j M Y') : $sale->invoice_number }}</h3>
                         <span class="pt-invoice__date">{{ $sale->created_at?->format('l, j F Y') }} &middot; {{ $sale->items->count() }} {{ Str::plural('piece', $sale->items->count()) }}</span>
                     </div>
@@ -125,12 +126,12 @@
                 </ul>
 
                 <dl class="pt-sum">
-                    @if ($gst > 0)<div><dt>GST</dt><dd>{{ $inr($gst) }}</dd></div>@endif
                     @if ((float) $sale->discount > 0)<div><dt>Discount</dt><dd>&minus;{{ $inr($sale->discount) }}</dd></div>@endif
                     <div class="pt-sum__total"><dt>Total</dt><dd>{{ $inr($sale->total) }}</dd></div>
+                    @if ($balance > 0.005)<div><dt>Still to pay</dt><dd>{{ $inr($balance) }}</dd></div>@endif
                 </dl>
                 @if ($pending)
-                    <p class="pt-note"><i class="ph ph-info"></i>The shop confirms every sale before issuing the final invoice number. This usually happens the same day.</p>
+                    <p class="pt-note"><i class="ph ph-info"></i>The shop confirms every sale before the bill is final. This usually happens the same day.</p>
                 @endif
             </article>
         @empty

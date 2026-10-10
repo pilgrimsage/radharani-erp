@@ -9,16 +9,16 @@ Confirmed client requirements this build is based on: @docs/REQUIREMENTS.md
 
 ## Non-negotiable rules
 
-1. Never `UPDATE` or `DELETE` a `movements`, `sales`, or `purchases` row — corrections are new rows referencing the original, approved by an owner. The narrow exceptions, matching the schema's own design: `sales.confirmed_by_accountant`, `sales.invoice_number` (the placeholder `RESV-...` number is replaced with the real sequential GST invoice number from `InvoiceCounter`, both set together at the same verification moment), and a movement's `approved_by` column may be set once, by an admin, as part of the verification/review flows described below — nothing else on those rows ever changes.
+1. Never `UPDATE` or `DELETE` a `movements`, `sales`, or `purchases` row — corrections are new rows referencing the original, approved by an owner. The narrow exceptions, matching the schema's own design: `sales.confirmed_by_accountant`, `sales.invoice_number` (the placeholder `RESV-...` number is replaced with the original Tally bill number an admin types in, both set together at the same verification moment), and a movement's `approved_by` column may be set once, by an admin, as part of the verification/review flows described below — nothing else on those rows ever changes.
 2. Never store a calculated price, except `sale_items.price_at_sale` (a deliberate snapshot at time of sale).
 3. Every write needs a real `user_id` — no anonymous or shared-login actions.
 4. Photos go through `PhotoCompressionService` — never save an upload directly.
 5. New slow/async work goes through the queue (`database` driver) — never the request cycle.
-6. New modules convert their matching wireframe in `resources/views/wireframes/` where one exists — several newer modules (Exchange, Refinery, Orders, Notifications, Loyalty, Installments) have no matching wireframe (they emerged after the original 13 were approved) and instead follow `docs/DESIGN_SYSTEM.md`.
+6. New modules convert their matching wireframe in `resources/views/wireframes/` where one exists — several newer modules (Exchange, Refinery, Orders, Notifications, Referral, Installments) have no matching wireframe (they emerged after the original 13 were approved) and instead follow `docs/DESIGN_SYSTEM.md`.
 7. Staff (`users`) and customers (`customers`) are two entirely separate auth systems (different guards) — never merge them. Staff log in with email **or phone** (`users.phone`); customers log in with phone only.
 8. A full-page Livewire component's Blade view must **never** wrap itself in `<x-layouts.app>`/`<x-layouts.guest>`. Set the layout from PHP instead: `return view('livewire.x.y', [...])->layout('components.layouts.app', ['title' => '...']);`. See "The Livewire double-layout trap" below — getting this wrong silently breaks every button/form on the page.
 9. Items returning from karigar or hallmarking sit in `items.status = 'pending_review'` until an admin confirms them via the Pending Review queue (`movement.approve` permission) — never write them straight back to `in_stock`.
-10. A sale is not final until an admin verifies it. On entry, sold items get `items.status = 'reserved'`, not `'sold'`; the Sale Verification Queue is what flips them to `'sold'`, sets `sales.confirmed_by_accountant`, and assigns the real invoice number (see rule 1).
+10. A sale is not final until an admin verifies it. On entry, sold items get `items.status = 'reserved'`, not `'sold'`; the Sale Verification Queue is what flips them to `'sold'`, sets `sales.confirmed_by_accountant`, and records the Tally bill number (see rule 1). A sale with a balance can still be verified.
 
 ## Stack
 
@@ -33,28 +33,30 @@ Confirmed client requirements this build is based on: @docs/REQUIREMENTS.md
 
 | Module | Status |
 |---|---|
-| Stock (Box/Packet/Item + detail/QR/bulk-import/configurator) | ✅ Live |
-| Movements (Vault↔Counter scan tray, Karigar dispatch/return incl. raw-material + customer-material sub-flows, Hallmark dispatch/return, Photo/Custom incl. photo upload, Pending Review (admin-only, `movement.approve`), Movement Log) | ✅ Live |
-| Old Gold/Silver Exchange (4-step guided entry, status tracker, final valuation) | ✅ Live |
-| Refinery (batch send/return, photo upload) | ✅ Live |
-| Custom Orders (new entry, status board, detail, ready-reminders, rate-lock) | ✅ Live |
-| Pricing (daily rate entry — gold/silver/titanium/platinum, rate history, making-charge config, discount rules, additional charges) | ✅ Live |
-| Sales / Billing (new sale with `reserved` hold, verification queue, invoice view, history) | ✅ Live |
-| Purchases / Vendors (finished-product + raw-material with pending-tag lines) | ✅ Live |
-| Accounting ledger (view only — auto-write-on-sale/purchase still open) | ✅ Live view, ⬜ auto-posting not wired |
-| Admin (Employees/Users/Roles/Customers/Audit log/Bulk import) | ✅ Live |
-| Loyalty (manual award + ledger) | ✅ Live |
-| Installment scheme (manual enrolment + monthly status + list) | ✅ Live |
-| Notifications (shared pending-message queue, generate → copy → mark sent) | ✅ Live |
-| Customer portal (login, purchases, loyalty, installments, referrals, change password) | ✅ Live — in the public website's design and header, phone-first |
-| Public website / storefront at `/` (home, listing with filters, product detail; GSAP design from the `rr-web-ui` repo) + Website admin (Listings, Categories, Collections, Settings, Website tab on the item form) | ✅ Live |
-| Owner dashboard, Daily logbook, Staff activity, Location report | ✅ Live |
+| Stock (Box/Packet/Item + detail/QR/bulk-import/configurator) | ✅ Live. Also: Boxes & Packets in one list with soft delete of empty ones, product soft delete, unassigned items by entry batch, Product View by metal, Stock Audit per box, HUID Export / Update (Excel round trip), Change Item location with multi-scan, Metal > Subcategory category tree |
+| Locations (owner-managed: Vault, counters, displays; place changes; per-location report pages) | ✅ Live |
+| Movements: Vault ↔ Counter (one screen, multi-scan, one-click return, place change), Karigar (one screen: issue with advance, part receipts, payments, repairs/customer metal), Hallmarking (one screen: counted + tagged pieces, part returns), Photo/Custom (piece, packet or box), Pending Review, Movement Log | ✅ Live |
+| Raw-metal balance (by metal and carat; purchases add, karigar advances and metal payments deduct) | ✅ Live |
+| Ledgers: Karigar, Hallmarker (weights only), Customer (on the customer page), PDF and Excel | ✅ Live |
+| Old Gold/Silver Exchange (resumable step form, edits until settled, deduction presets by metal and carat, Exchanges list, status tracker, final valuation) + Refinery (auto-calculated return) | ✅ Live |
+| Custom Orders (3-step entry with reference images, sourcing paths to karigar/hallmark/sales, in-stock hold with sale warning and admin override) | ✅ Live |
+| Pricing: per-carat daily rates, unified pricing rules (making, additional, discount, hallmark by product/category/price range/metal), price simulator, making charges by category | ✅ Live (calculation provisional, see below) |
+| Sales (5-step form, vault check, part payments with calculated balance, adjustment, referral code, verification with Tally bill number, printable bill) | ✅ Live |
+| Purchases (raw material only: bill reference, notes, adds to the raw-metal balance) | ✅ Live |
+| Referral (opt-in codes, metal bought per code, owner-set points rules, awarding from verified sales) | ✅ Live. Replaces Loyalty |
+| Monthly scheme (length, existing members, months pending, completion date, maturity outcomes: order, sale or reserve) | ✅ Live |
+| Messages (one shared copy-and-send queue, grouped Sales / Installment / Order) | ✅ Live |
+| Customer portal (login, purchases with balance, installments, referrals, change password) | ✅ Live: in the public website's design and header, phone-first |
+| Public website / storefront at `/` + Website admin | ✅ Live. Menu built from the category tree; no GST on prices |
+| Admin (Employees/Users/Roles/Locations/Karigars & Centres/Customers/Audit log/Bulk import) | ✅ Live. The audit log shows what changed with before and after |
+| Owner dashboard (no money figures), Daily logbook, Staff activity, Location report | ✅ Live |
 | Wireframes (all 13 original) | ✅ Static reference views, routed at `/wireframes` |
 | Queue infrastructure (`jobs` table) | ✅ Fixed |
-| Vendor payable auto-trigger from a raw-material karigar dispatch | ⬜ Still open — client hasn't confirmed whether this is automatic or always a separate manual purchase entry |
-| Pricing calculation mechanics vs. the client's Excel sheet | ⬜ Provisional — `PricingService`/making-charge config to be reviewed once the client sends it |
+| Removed (8 Oct change list, section 18) | Accounting, Tally export, Loyalty, vendors/suppliers, finished-goods purchases, invoices and invoice numbering, GST, per-piece QR reprint, separate karigar/hallmark in/out screens |
+| Pricing calculation mechanics vs. the client's Excel sheet | ⬜ Provisional: `PricingService` and the rules to be reviewed once the client sends it |
+| Review link in the sale confirmation message | ⬜ Waiting for the URL (`SHOP_REVIEW_LINK`) |
 | Custom-order uncollected-order-expiry timing | ⬜ Still open |
-| Tally export | ⬜ Not built |
+| Referral points award mechanism | ⬜ Rules are set by the owner, the automatic mechanism is still to be designed |
 
 See `docs/REQUIREMENTS.md` for the full confirmed-requirements document this build was implemented against, including everything listed above as "still open."
 
@@ -67,12 +69,24 @@ See `docs/REQUIREMENTS.md` for the full confirmed-requirements document this bui
 - **The Add/Edit Item form** is its own component (`Stock\ItemForm`), opened with `Livewire.dispatch('open-item-form', { id })` / `{ purchaseItemId }` and emitting `item-saved`. Don't duplicate it into other pages; embed `<livewire:stock.item-form />`.
 - **List pages** use `App\Livewire\Concerns\WithDataTable` with `<x-ui.datatable>` (see `docs/DESIGN_SYSTEM.md`).
 
+## Conventions added with the 8 October change list
+
+- **Batches are identified by date and time.** Karigar issues (`karigar_raw_batches`), hallmark dispatches (`hallmark_batches`), imports (`entry_batches`) and raw-material purchases show `label` (`j M Y, g:i a`). Part receipts (`karigar_receipts`, `hallmark_receipts`) are insert-only; the owner or manager closes what has not come back, with a note.
+- **Categories are a tree**: `item_categories` (metal, then subcategory); `items.category` is kept as the subcategory's name and `items.category_id` links it. `Item::saving` links name-only code paths to the tree.
+- **Locations** are owner-managed (`locations`); `movements.location_id` records where a `vault_out` went and a second `vault_out` to another place is a place change. `Location::isInVault()` is the vault check Sales uses. Old `vault_out` rows with no location read as the first counter (movements are never edited).
+- **Pricing**: `RateLog::latestFor($metal, $carat)` is the rate for a carat; `PricingRule` rows (making, additional, discount, hallmark) are matched most-specific-first (product, category, price range, metal, all); the price range is measured on the metal value only. A making value set on the piece itself is its own product-level setting.
+- **Money is only in Sales and the price simulator.** Karigar and hallmarker ledgers are weights and counts only; the dashboard shows no money.
+- **Soft deletes** on boxes, packets and items. Deleting is blocked for a sold or out-of-store piece and for a non-empty container.
+- **Front-end build**: `public/build` is tracked. Run `npm run build` after adding Blade views or Tailwind classes or the new classes will not exist in the browser.
+- **PDF downloads** use `dompdf/dompdf`; Excel downloads use `openspout`.
+- Livewire reads a dot in a `wire:model` key as a path, so inputs keyed by a carat such as `99.9` use `DailyRateEntry::key()`.
+
 ## Public website (storefront) conventions
 
 - **`/` is the public website**, not a login chooser. The staff/customer chooser lives at `/sign-in` (linked from the site footer); `/login` and `/portal/login` are unchanged.
 - **It is deliberately outside the ERP's front-end stack.** `resources/views/storefront/*` use their own layout with the site's own CSS/JS in `public/storefront/` (plain files, cache-busted by `App\Support\StorefrontAsset`, not Vite) and a self-hosted GSAP 3.15 bundle (core + ScrollTrigger, ScrollSmoother, SplitText, ScrollToPlugin). No Tailwind, Livewire or Alpine on those pages, and no Aurum tokens: the storefront keeps the `rr-web-ui` design pixel-for-pixel. Plain controllers (`StorefrontController`), not Livewire.
-- **Data flows one way:** `App\Services\StorefrontCatalog` builds `window.RJ_DATA` (pieces, categories, collections, today's rates, shop details, URLs) and the scripts render from it. Prices arrive already computed (`PricingService` + GST at the category's `gst_rates` rate, same as New Sale); the browser never calculates a price.
-- **One listing = one physical piece.** A piece shows only when `show_on_website` is ticked, it has a `web_name`, its stock `category` rolls up into an active `storefront_categories` row, and `status = 'in_stock'`, so reserved/dispatched/sold pieces drop off by themselves. `slug` and `listed_at` are set once on first publish (`Item::booted()`), never regenerated.
+- **Data flows one way:** `App\Services\StorefrontCatalog` builds `window.RJ_DATA` (pieces, categories, collections, today's rates, shop details, URLs) and the scripts render from it. Prices arrive already computed (`PricingService`, no GST); the browser never calculates a price.
+- **One listing = one physical piece.** A piece shows only when `show_on_website` is ticked, it has a `web_name`, its subcategory in the category tree is switched on, and `status = 'in_stock'`, so reserved/dispatched/sold pieces drop off by themselves. `slug` and `listed_at` are set once on first publish (`Item::booted()`), never regenerated.
 - **Staff manage it** under Website in the sidebar (`website.manage`, owner + manager). Website fields on the Add/Edit Item form are only shown to, and saved for, that permission. Catalogue photos are `item_images` rows via `PhotoCompressionService` (not `movements.photo_path`).
 - `php artisan db:seed --class=StorefrontDemoSeeder` (local/testing only; also run by `DemoDataSeeder`) loads the design's sample catalogue from `database/seeders/data/storefront-demo.json`, using Unsplash URLs for images.
 

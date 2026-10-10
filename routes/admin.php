@@ -4,8 +4,6 @@ use Illuminate\Support\Facades\Route;
 use App\Livewire\Admin\EmployeeManager;
 use App\Livewire\Admin\UserManager;
 use App\Livewire\Admin\RoleManager;
-use App\Livewire\Admin\LoyaltySettingsManager;
-use App\Livewire\Admin\ReferralOverview;
 use App\Livewire\Admin\CustomerManager;
 use App\Livewire\Admin\CustomerDetail;
 use App\Livewire\Admin\CustomerBulkImport;
@@ -27,10 +25,6 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
 
     Route::get('/roles', RoleManager::class)
         ->middleware('permission:role.manage')->name('admin.roles');
-
-    // Hidden: Loyalty settings (8 Oct change list, 15.1)
-    // Route::get('/loyalty-settings', LoyaltySettingsManager::class)
-    //     ->middleware('permission:referral.manage')->name('admin.loyalty-settings');
 
     Route::redirect('/referrals', '/referral')->name('admin.referrals');
 

@@ -8,7 +8,6 @@ $pendingReview = \App\Models\Stock\Item::where('status', 'pending_review')->coun
 $pendingSales = \App\Models\Sales\Sale::where('confirmed_by_accountant', false)->count();
 $pendingMessages = \App\Models\Notification\PendingNotification::where('status', 'pending')->count();
 
-// Hidden for now (8 Oct change list, section 18): Accounting, Loyalty, Vendors. Routes are switched off in routes/web.php and routes/admin.php.
 // Single source for the whole navigation. 'can' is a permission (or list, any-of) gate.
 $nav = [
     ['type' => 'link', 'route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],

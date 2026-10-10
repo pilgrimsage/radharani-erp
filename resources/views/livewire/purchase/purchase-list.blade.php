@@ -27,7 +27,7 @@
                 <td class="whitespace-nowrap">{{ $p->label }}<span class="block text-[12px] text-ink_text-muted">{{ $p->creator?->name }}</span></td>
                 <td class="text-[13px]">
                     @forelse ($p->lines as $l)<span class="block">{{ ucfirst($l->metal ?? '') }} {{ $l->purity }} · {{ number_format($l->weight, 3) }} g @if ($l->description)<span class="text-ink_text-muted">· {{ $l->description }}</span>@endif</span>
-                    @empty <span class="text-ink_text-muted">{{ $p->type === 'finished_product' ? 'Finished goods (old entry)' : '-' }}</span> @endforelse
+                    @empty <span class="text-ink_text-muted">-</span> @endforelse
                 </td>
                 <td class="text-right tabular">{{ $p->total_weight ? number_format($p->total_weight, 3) . ' g' : '-' }}</td>
                 <td class="rj-code">{{ $p->invoice_number ?: '-' }}</td>

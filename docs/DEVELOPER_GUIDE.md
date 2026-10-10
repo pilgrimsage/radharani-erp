@@ -1,5 +1,7 @@
 # Radharani Jewellery ERP — Developer Guide
 
+> **Updated 8 October 2026.** The accounting ledger, Loyalty, GST and invoice numbering, vendors and finished-goods purchases described in places below were removed. See `SCHEMA_REFERENCE.md` ("Update, 8 October 2026") and `CLAUDE.md` for what replaced them. Sections that describe removed features are marked *(removed)*.
+
 System design, schema, and reasoning for every structural decision. Read this before touching migrations or models.
 
 ---
@@ -79,7 +81,7 @@ price = (net weight × rate) + making_charge + stone_value + huid_charge − aut
 
 This is why a single rate update reprices the entire catalog instantly — there's nothing to update, because nothing was stored. `source` (`manual`/`api`) tracks whether the rate came from a live market API or a manual override; manual always wins if entered, since the shop must never depend on a third-party API for something this operationally critical.
 
-### Sales — `sales`, `sale_items`
+### Sales — `sales`, `sale_items`, `sale_payments` (GST and invoice numbering *(removed)*: the admin enters the Tally bill number at verification; a bill is paid in parts and the balance is worked out)
 
 **Why `sale_items.price_at_sale` freezes the price:** live pricing is correct *before* a sale, but once sold, the price must never move again even if the gold rate changes the next day. This is the one deliberate exception to "never store a price."
 
@@ -93,13 +95,13 @@ GST fields (`cgst`, `sgst`, `igst`, `invoice_number`) are split, not a flat tota
 
 A distinct lifecycle from Sales, not a sale sub-type — an order is a pre-commitment (placed → confirmed → ready → delivered → cancelled) that later *converts into* a sale (`converted_sale_id`), rather than being one. Rate-locking lives here, not on `sales`: if the customer paid in full at order time, `locked_rate`/`locked_at` freeze what the price will be; otherwise nothing is frozen and the rate at delivery applies. `out_of_stock` + nullable `in_stock_item_id` let an order exist against a product that doesn't physically exist yet.
 
-### Purchases — `vendors`, `purchases`, `purchase_items`
+### Purchases — `purchases`, `purchase_items` (vendors and finished-goods purchases *(removed)*: raw material only, bill reference and notes, adds to `raw_metal_entries`)
 
 Separate from `movements` on purpose. **Movements answer "where is it physically"; purchases answer "what do we owe for it."** A karigar delivering finished goods is both a `karigar_in` movement and a `purchase` — conflating the two would make vendor payables untrackable independent of stock location.
 
 **Why `purchase_items` needed restructuring:** the original composite `(purchase_id, item_id)` primary key assumed every purchase line has a real item at the moment of purchase. Raw-material purchases don't — the vendor delivers untagged metal, described but not yet a taggable `Item`. `purchase_items` now has its own `id`, a nullable `item_id`, and description/category/metal/purity/`tag_pending` fields so a raw-material line can exist before tagging, then get its `item_id` filled in once staff tag it in Stock — updating a `purchase_items` row this way is fine; the parent `purchases` row itself is still never touched after insert.
 
-### Accounting Ledger — `accounts`, `transactions`
+### Accounting Ledger — `accounts`, `transactions` *(removed)*
 
 **Not a Tally replacement.** A thin double-entry-style ledger that every `sale` and `purchase` writes to automatically (debit/credit rows), so a clean Tally-compatible export is always possible without manual reconciliation. Trial balance, P&L, balance sheet — deliberately out of scope, Tally already does that well.
 
@@ -113,7 +115,7 @@ Separate from `movements` on purpose. **Movements answer "where is it physically
 
 **Why roles/permissions instead of a flat enum:** a flat `role` column can't express "this accountant can approve sales but not edit rates." Spatie's package gives configurable per-role permissions without a schema change every time a new role is needed.
 
-### Customer features — `customers`, `loyalty_transactions`, `installment_schemes`, `installment_payments`, `loyalty_settings`
+### Customer features — `customers`, `installment_schemes`, `installment_payments` (loyalty tables *(removed)*, see Referral below)
 
 Loyalty is a ledger (`loyalty_transactions`), not a running counter, for the same audit reason as movements — any dispute is answerable from history, not just a trusted total. Installments split scheme (the plan) from payments (each actual payment) so partial/late payments are traceable and a 12th-month bonus can be triggered from real payment history.
 
@@ -172,3 +174,16 @@ Full detail and context for each: `docs/REQUIREMENTS.md`'s "Still open" section.
 - **New async work goes through the queue (`database` driver), not the request cycle.** Anything slow (compression, WhatsApp, exports) blocks a staff member on a phone otherwise.
 - **Never self-wrap a full-page Livewire component's Blade view in `<x-layouts.app>`.** Set the layout from PHP (`->layout('components.layouts.app', [...])`) instead — see `CLAUDE.md`'s "Livewire double-layout trap." Getting this wrong breaks every interactive action on the page, not just the initial load.
 - **Internal item codes always come from `Item::generateInternalCode()`.** Never hand-roll a second `Str::random(...)`-based generator — the client's non-ambiguous-character requirement lives in exactly one place.
+
+
+---
+
+## 6. Added with the 8 October 2026 change list
+
+- **Karigar and Hallmarking are batches.** One issue to a karigar or one dispatch to a centre is a batch identified by its date and time. Pieces come back in as many part receipts as it takes; the pending balance is always shown; the owner or manager closes the rest with a note. Weight loss is typed in, never worked out. Returned pieces still wait in Pending Review.
+- **Raw-metal balance** (`raw_metal_entries`): raw-material purchases add; a karigar's metal advance and metal payments deduct. Both are blocked if the balance is short.
+- **Ledgers** (`LedgerService`, `HallmarkLedger`): per karigar and per hallmarking centre, weights and counts only, plus a customer ledger on the customer page. PDF (dompdf) and Excel (openspout).
+- **Pricing**: rates per metal and carat; `PricingRule` for making charge, additional charge, discount and hallmarking charge, most specific rule wins, price range measured on metal value only. Provisional until the client's Excel sheet is reviewed.
+- **Locations, categories, batches, soft deletes, audits**: see `CLAUDE.md` "Conventions added with the 8 October change list".
+- **Referral** replaced Loyalty: opt-in codes, points by the owner's rules, awarded from verified sales by staff (not automatic: the mechanism is still to be designed).
+- **Exchange** is resumable and edit-until-settled with every edit logged; deduction presets live per metal and carat on the daily rates page.

@@ -11,8 +11,7 @@ class Purchase extends Model
     use LogsActivity;
 
     protected $fillable = [
-        'vendor_id', 'type', 'invoice_number', 'notes', 'order_id', 'total_weight', 'total_amount',
-        'gst', 'payment_status', 'created_by',
+        'type', 'invoice_number', 'notes', 'order_id', 'total_weight', 'created_by',
     ];
 
     // Feeds the Audit Log Viewer (Section 17). Purchases rows are
