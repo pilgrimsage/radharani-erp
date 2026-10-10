@@ -133,11 +133,7 @@ class PendingReviewQueue extends Component
             ->select('items.*')
             ->addSelect(['last_return_id' => $this->lastReturnSub('id')])
             ->addSelect(['returned_at' => $this->lastReturnSub('created_at')])
-            ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q
-                ->where('huid_code', 'like', "%{$this->search}%")
-                ->orWhere('internal_code', 'like', "%{$this->search}%")
-                ->orWhere('category', 'like', "%{$this->search}%")
-                ->orWhere('description', 'like', "%{$this->search}%")))
+            ->when($this->search !== '', fn ($q) => $q->searchAnything($this->search))
             ->when($this->source === 'new', fn ($q) => $q->whereNotNull('source_karigar_batch_id'))
             ->when(in_array($this->source, ['karigar', 'hallmark'], true), fn ($q) => $q
                 ->whereNull('source_karigar_batch_id')

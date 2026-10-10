@@ -42,7 +42,7 @@
     @php $pageIds = $items->pluck('id')->map(fn ($id) => (string) $id)->all(); @endphp
     <x-ui.datatable :paginator="$items">
         <x-slot:toolbar>
-            <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category or description" class="w-full lg:w-[300px]" />
+            <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category, packet or box" class="w-full lg:w-[300px]" />
             <select wire:model.live="categoryFilter" class="rj-select w-auto min-w-[150px]" aria-label="Category">
                 <option value="">All categories</option>
                 @foreach ($categories as $c)

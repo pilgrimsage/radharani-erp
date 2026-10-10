@@ -120,6 +120,29 @@ class Item extends Model
         return $this->hasMany(QrCode::class, 'target_id')->where('target_type', 'item');
     }
 
+    /**
+     * One search behaviour for every piece list (8 Oct change list, 1.2): finds a piece by its
+     * HUID, internal code, category, description or website name, and also everything inside a
+     * packet or box when the packet or box code or label is typed, or a QR sticker code.
+     */
+    public function scopeSearchAnything($query, string $term)
+    {
+        $like = '%' . trim($term) . '%';
+
+        // Qualified with the table: list pages join packets and boxes.
+        return $query->where(function ($q) use ($like, $term) {
+            $q->where('items.huid_code', 'like', $like)
+                ->orWhere('items.internal_code', 'like', $like)
+                ->orWhere('items.category', 'like', $like)
+                ->orWhere('items.description', 'like', $like)
+                ->orWhere('items.web_name', 'like', $like)
+                ->orWhereIn('items.packet_id', Packet::query()->select('id')
+                    ->where('code', 'like', $like)->orWhere('label', 'like', $like)
+                    ->orWhereIn('box_id', Box::query()->select('id')->where('code', 'like', $like)->orWhere('label', 'like', $like)))
+                ->orWhereIn('items.id', QrCode::query()->select('target_id')->where('target_type', 'item')->where('code', strtoupper(trim($term))));
+        });
+    }
+
     // Why this piece can't be deleted, or null if it can (8 Oct change list, 4.3).
     public function deletionBlocker(): ?string
     {

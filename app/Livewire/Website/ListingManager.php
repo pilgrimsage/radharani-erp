@@ -76,12 +76,7 @@ class ListingManager extends Component
             ->withCount('images')
             ->with(['images' => fn ($q) => $q->limit(1), 'storefrontCollection'])
             ->where('status', '!=', 'sold')
-            ->when($this->search, fn ($q) => $q->where(fn ($q) => $q
-                ->where('web_name', 'like', "%{$this->search}%")
-                ->orWhere('huid_code', 'like', "%{$this->search}%")
-                ->orWhere('internal_code', 'like', "%{$this->search}%")
-                ->orWhere('category', 'like', "%{$this->search}%")
-                ->orWhere('description', 'like', "%{$this->search}%")))
+            ->when($this->search, fn ($q) => $q->searchAnything($this->search))
             ->when($this->stockCategory, fn ($q) => $q->where('category', $this->stockCategory))
             ->when($this->state === 'live', fn ($q) => $q->onWebsite()->whereIn('category_id', $activeIds))
             ->when($this->state === 'waiting', fn ($q) => $q->where('show_on_website', true)->where(fn ($q) => $q
