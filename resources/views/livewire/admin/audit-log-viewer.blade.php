@@ -10,7 +10,7 @@
     <x-ui.datatable :paginator="$activities">
         <x-slot:toolbar>
             <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Search description" class="w-full sm:w-[280px]" />
-            <select wire:model.live="logNameFilter" class="rj-select rj-input-sm">
+            <select wire:model.live="logNameFilter" class="rj-select rj-input-sm w-auto">
                 <option value="">All types</option>
                 <option value="movement">Movements</option>
                 <option value="sale">Sales</option>
@@ -18,7 +18,7 @@
                 <option value="stock">Stock</option>
                 <option value="order">Orders</option>
             </select>
-            <select wire:model.live="userFilter" class="rj-select rj-input-sm" aria-label="Who">
+            <select wire:model.live="userFilter" class="rj-select rj-input-sm w-auto" aria-label="Who">
                 <option value="">Everyone</option>
                 @foreach ($users as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach
             </select>
@@ -42,8 +42,10 @@
                 <td class="text-[12.5px] text-ink_text-secondary whitespace-nowrap">{{ $a->created_at->format('d M Y, g:i a') }}</td>
                 <td><x-ui.badge tone="neutral" size="sm">{{ ucfirst($a->log_name ?? 'other') }}</x-ui.badge></td>
                 @php
-                    $new = (array) ($a->properties['attributes'] ?? []);
-                    $old = (array) ($a->properties['old'] ?? []);
+                    // This version of the package keeps changes in attribute_changes (older ones used properties).
+                    $changes = $a->attribute_changes ?? collect();
+                    $new = (array) ($changes['attributes'] ?? $a->properties['attributes'] ?? []);
+                    $old = (array) ($changes['old'] ?? $a->properties['old'] ?? []);
                 @endphp
                 <td class="text-ink_text-primary">
                     <span class="font-semibold">{{ \App\Livewire\Admin\AuditLogViewer::subjectLabel($a) ?: '-' }}</span>
