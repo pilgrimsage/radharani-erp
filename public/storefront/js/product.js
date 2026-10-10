@@ -317,7 +317,7 @@
     "</div></div></div>" +
     /* SAMPLE POLICY TEXT: confirm the exact exchange and buyback terms with the store before launch */
     '<div class="acc"><button class="acc__btn" aria-expanded="false">Exchange and buyback <i class="ph ph-plus"></i></button><div class="acc__panel"><div class="acc__inner">' +
-    "<p>Gold bought from us can be exchanged against a new piece at the day's rate, with the purity tested in front of you. Making charges and GST are not refunded.</p>" +
+    "<p>Gold bought from us can be exchanged against a new piece at the day's rate, with the purity tested in front of you. Making charges are not refunded.</p>" +
     '<p><a class="link" href="' + RJ.urls.home + '#exchange">How old gold exchange works <i class="ph ph-arrow-right"></i></a></p>' +
     "</div></div></div>" +
     "</div>" +
