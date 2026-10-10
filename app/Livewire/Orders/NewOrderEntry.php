@@ -12,6 +12,7 @@ use App\Support\MessageTemplates;
 use App\Support\Phone;
 use App\Support\StockLookup;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -32,7 +33,12 @@ class NewOrderEntry extends Component
 
     // 1. customer
     public string $customerSearch = '';
+    #[Url(as: 'customer', except: '')]
     public ?int $customerId = null;
+
+    // Set when the order is how a matured monthly scheme ends (8 Oct change list, 16.1).
+    #[Url(as: 'scheme', except: '')]
+    public ?int $schemeId = null;
     public bool $addingCustomer = false;
     public string $newName = '';
     public string $newPhone = '';
@@ -52,6 +58,28 @@ class NewOrderEntry extends Component
     public bool $fullPaymentNow = false;
     public $estimatedValue = '';
     public $depositAmount = '';
+
+    public function mount(): void
+    {
+        if ($this->schemeId) {
+            $scheme = \App\Models\Customer\InstallmentScheme::where('status', 'active')->find($this->schemeId);
+            if ($scheme) {
+                $this->customerId = $scheme->customer_id;
+                $this->depositAmount = (string) $scheme->paid_in;
+                $this->step = 2;
+                $this->reach = 2;
+            } else {
+                $this->schemeId = null;
+            }
+        }
+        if ($this->customerId && ! Customer::whereKey($this->customerId)->exists()) {
+            $this->customerId = null;
+        }
+        if ($this->customerId && $this->step === 1 && ! $this->schemeId) {
+            $this->step = 2;
+            $this->reach = 2;
+        }
+    }
 
     public function goToStep(int $n): void
     {
@@ -182,6 +210,10 @@ class NewOrderEntry extends Component
 
             return $order;
         });
+
+        if ($this->schemeId && ($scheme = \App\Models\Customer\InstallmentScheme::with('customer')->where('status', 'active')->find($this->schemeId))) {
+            \App\Livewire\Installments\SchemeList::complete($scheme, 'order', $order->id);
+        }
 
         MessageTemplates::queue('order_accepted', $order->customer, MessageTemplates::orderAccepted($order), 'order', $order->id);
 

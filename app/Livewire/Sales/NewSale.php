@@ -34,9 +34,14 @@ class NewSale extends Component
     #[Url(as: 'order', except: '')]
     public ?int $orderId = null;
 
+    // Set when this sale is how a matured monthly scheme ends (8 Oct change list, 16.1).
+    #[Url(as: 'scheme', except: '')]
+    public ?int $schemeId = null;
+
 
     // ---- 1. customer
     public string $customerSearch = '';
+    #[Url(as: 'customer', except: '')]
     public ?int $customerId = null;
     public bool $addingCustomer = false;
     public string $newName = '';
@@ -61,6 +66,23 @@ class NewSale extends Component
 
     public function mount(): void
     {
+        if ($this->schemeId) {
+            $scheme = \App\Models\Customer\InstallmentScheme::where('status', 'active')->find($this->schemeId);
+            if ($scheme) {
+                $this->customerId = $scheme->customer_id;
+                $this->payments = [['mode' => 'cash', 'amount' => (string) $scheme->paid_in, 'note' => 'Paid in through the monthly scheme']];
+            } else {
+                $this->schemeId = null;
+            }
+        }
+        if ($this->customerId && ! Customer::whereKey($this->customerId)->exists()) {
+            $this->customerId = null;
+        }
+        if ($this->customerId) {
+            $this->step = max($this->step, 2);
+            $this->reach = max($this->reach, 2);
+        }
+
         if (! $this->orderId) {
             return;
         }
@@ -452,6 +474,10 @@ class NewSale extends Component
                 if (is_numeric($p['amount'] ?? null) && (float) $p['amount'] > 0) {
                     SalePayment::create(['sale_id' => $sale->id, 'mode' => $p['mode'], 'amount' => round((float) $p['amount'], 2), 'note' => $p['note'] ?? null, 'user_id' => Auth::id()]);
                 }
+            }
+
+            if ($this->schemeId && ($scheme = \App\Models\Customer\InstallmentScheme::with('customer')->where('status', 'active')->find($this->schemeId))) {
+                \App\Livewire\Installments\SchemeList::complete($scheme, 'sale', $sale->id);
             }
 
             // Link the order: it is delivered once an admin verifies this sale.

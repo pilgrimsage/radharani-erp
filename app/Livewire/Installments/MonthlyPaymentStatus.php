@@ -41,6 +41,10 @@ class MonthlyPaymentStatus extends Component
         ]);
 
         $scheme->increment('months_paid');
+        $scheme->refresh();
+        if ($scheme->is_matured) {
+            $this->dispatch('toast', message: "{$scheme->customer->name}'s scheme has matured. Choose what happens next in Scheme List.", type: 'info');
+        }
         $this->dispatch('toast', message: "Marked {$scheme->customer->name}'s installment as paid for ".now()->format('F Y').'.', type: 'success');
     }
 
