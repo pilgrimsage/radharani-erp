@@ -30,6 +30,10 @@
         </x-slot:meta>
         <x-slot:actions>
             <x-ui.button variant="secondary" icon="package" wire:click="openMove">{{ $item->packet ? 'Move' : 'Put in packet' }}</x-ui.button>
+            @if (! $item->deletionBlocker())
+                <x-ui.button variant="danger-soft" icon="trash"
+                    x-on:click="$dispatch('rj-confirm', { title: 'Delete {{ $item->label }}?', message: 'The piece is hidden from stock but kept in the audit trail.', confirm: 'Delete', tone: 'danger', action: () => $wire.deleteItem() })">Delete</x-ui.button>
+            @endif
             <x-ui.button icon="edit" x-on:click="Livewire.dispatch('open-item-form', { id: {{ $item->id }} })">Edit piece</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>

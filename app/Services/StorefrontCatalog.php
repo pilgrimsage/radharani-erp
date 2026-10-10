@@ -81,6 +81,8 @@ class StorefrontCatalog
                 return $this->piece($item, $category, $gst[mb_strtolower($item->category)] ?? 3.0, $newSince);
             })
             ->filter()
+            // A metal whose rate is set to 0 is not shown on the display.
+            ->filter(fn ($p) => ($p['pr']['rate'] ?? 0) > 0)
             ->values();
     }
 

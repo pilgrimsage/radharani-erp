@@ -46,6 +46,24 @@ class ItemDetail extends Component
         $this->dispatch('toast', message: "{$this->item->label} moved to {$where}.", type: 'success');
     }
 
+    // Soft delete: hidden everywhere, kept in the audit trail.
+    public function deleteItem()
+    {
+        if ($reason = $this->item->deletionBlocker()) {
+            $this->dispatch('toast', message: $reason, type: 'error');
+
+            return;
+        }
+
+        $label = $this->item->label;
+        $this->item->delete();
+        activity('stock')->performedOn($this->item)->causedBy(auth()->user())->event('deleted')->log("Piece {$label} deleted");
+
+        session()->flash('toast', "{$label} deleted. It stays in the audit trail.");
+
+        return $this->redirectRoute('stock.items');
+    }
+
     public function issueQr(): void
     {
         QrCode::forTarget('item', $this->item->id);

@@ -58,7 +58,7 @@ class MovementLog extends Component
         $query = Movement::query()
             ->select('movements.*')
             ->leftJoin('users', 'users.id', '=', 'movements.user_id')
-            ->with(['user:id,name', 'approver:id,name'])
+            ->with(['user:id,name', 'approver:id,name', 'doneBy:id,name'])
             ->when($this->group !== '', fn ($q) => $q->whereIn('movements.movement_type',
                 Movement::PAIRS[$this->group] ?? [$this->group]))
             ->when($this->userId !== '', fn ($q) => $q->where('movements.user_id', $this->userId))

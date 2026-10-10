@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Stock\BoxManager;
+use App\Livewire\Stock\ContainerList;
 use App\Livewire\Stock\BoxDetail;
 use App\Livewire\Stock\PacketManager;
 use App\Livewire\Stock\PacketDetail;
@@ -15,10 +16,10 @@ use App\Http\Controllers\Stock\QrController;
 
 // Stock module — behind auth + the stock.manage permission gate.
 Route::middleware(['auth', 'permission:stock.manage'])->prefix('stock')->group(function () {
-    Route::get('/boxes', BoxManager::class)->name('stock.boxes');
+    Route::get('/boxes', ContainerList::class)->name('stock.boxes');
     Route::get('/boxes/{box}', BoxDetail::class)->name('stock.boxes.show');
 
-    Route::get('/packets', PacketManager::class)->name('stock.packets');
+    Route::get('/packets', ContainerList::class)->name('stock.packets');
     Route::get('/packets/{packet}', PacketDetail::class)->name('stock.packets.show');
 
     Route::get('/items', ItemManager::class)->name('stock.items');

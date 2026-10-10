@@ -4,12 +4,13 @@ namespace App\Models\Stock;
 use App\Models\Movement\KarigarRawBatch;
 use App\Models\Purchase\PurchaseItem;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class Item extends Model
 {
-    use LogsActivity;
+    use SoftDeletes, LogsActivity;
 
     // Non-ambiguous charset for auto-generated codes: excludes 0/O, 1/I,
     // and L/S/5/8/B — visually close to each other on a small printed tag.
@@ -101,6 +102,19 @@ class Item extends Model
     public function qrCodes()
     {
         return $this->hasMany(QrCode::class, 'target_id')->where('target_type', 'item');
+    }
+
+    // Why this piece can't be deleted, or null if it can (8 Oct change list, 4.3).
+    public function deletionBlocker(): ?string
+    {
+        if ($this->sales()->exists()) {
+            return 'This piece has been sold, so it must stay in the records.';
+        }
+        if ($this->status !== 'in_stock') {
+            return 'This piece is out of the store or in a process (' . str_replace('_', ' ', $this->status) . ').';
+        }
+
+        return null;
     }
 
     public function sales()

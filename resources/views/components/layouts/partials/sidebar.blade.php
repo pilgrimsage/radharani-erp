@@ -14,8 +14,7 @@ $nav = [
     ['type' => 'link', 'route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],
     ['key' => 'stock', 'label' => 'Stock', 'icon' => 'gem', 'can' => 'stock.manage', 'items' => [
         ['route' => 'stock.items', 'label' => 'Inventory'],
-        ['route' => 'stock.boxes', 'label' => 'Boxes'],
-        ['route' => 'stock.packets', 'label' => 'Packets'],
+        ['route' => 'stock.boxes', 'label' => 'Boxes & Packets'],
         ['route' => 'stock.assign', 'label' => 'Change Item location'],
         ['route' => 'stock.qr-codes', 'label' => 'QR Codes'],
         ['route' => 'stock.import', 'label' => 'Bulk Import'],

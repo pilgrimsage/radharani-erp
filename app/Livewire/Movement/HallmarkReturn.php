@@ -18,6 +18,8 @@ use Livewire\Component;
  */
 class HallmarkReturn extends Component
 {
+    use \App\Livewire\Movement\Concerns\HasDoneBy;
+
     public string $search = '';
     public ?int $selectedId = null; // the open hallmark_out movement
 
@@ -116,6 +118,7 @@ class HallmarkReturn extends Component
             $item->save();
 
             Movement::create([
+                ...$this->doneByAttributes(),
                 'trackable_type' => 'item',
                 'trackable_id' => $item->id,
                 'movement_type' => 'hallmark_in',

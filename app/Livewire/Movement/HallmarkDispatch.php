@@ -13,7 +13,7 @@ use Livewire\Component;
 // Send one or more pieces to a hallmarking centre: one hallmark_out movement per piece.
 class HallmarkDispatch extends Component
 {
-    use PicksItems;
+    use PicksItems, \App\Livewire\Movement\Concerns\HasDoneBy;
 
     public ?int $centreId = null;
     public ?string $expectedReturn = null;
@@ -51,6 +51,7 @@ class HallmarkDispatch extends Component
         DB::transaction(function () use ($items, $centre) {
             foreach ($items as $item) {
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => 'item',
                     'trackable_id' => $item->id,
                     'movement_type' => 'hallmark_out',

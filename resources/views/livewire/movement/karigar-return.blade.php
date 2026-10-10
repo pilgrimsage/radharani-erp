@@ -177,6 +177,8 @@
                             </section>
                         @endif
 
+                        <x-movement.done-by />
+
                         <x-ui.field label="Note" for="kr-note" error="note" optional>
                             <input id="kr-note" type="text" wire:model="note" maxlength="255" class="rj-input" placeholder="e.g. clasp replaced, one stone reset">
                         </x-ui.field>

@@ -23,7 +23,7 @@ use Livewire\Component;
  */
 class KarigarDispatch extends Component
 {
-    use PicksItems;
+    use PicksItems, \App\Livewire\Movement\Concerns\HasDoneBy;
 
     public const METALS = ['gold' => 'Gold', 'silver' => 'Silver', 'platinum' => 'Platinum', 'titanium' => 'Titanium'];
     public const WORK = ['Repair', 'Polish', 'Resize', 'Stone setting', 'Rhodium', 'Soldering'];
@@ -119,6 +119,7 @@ class KarigarDispatch extends Component
         DB::transaction(function () use ($items, $vendor) {
             foreach ($items as $item) {
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => 'item',
                     'trackable_id' => $item->id,
                     'movement_type' => 'karigar_out',

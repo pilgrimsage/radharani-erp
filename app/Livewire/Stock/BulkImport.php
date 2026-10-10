@@ -172,7 +172,8 @@ class BulkImport extends Component
             if (! is_numeric($data['making_value'])) $errors[] = 'Making value is not a number';
             if (mb_strlen((string) $data['description']) > 100) $errors[] = 'Description over 100 characters';
 
-            $packetId = $this->defaultPacketId;
+            // A blank packet is genuinely unassigned: never fall back to a packet nobody chose.
+            $packetId = $this->defaultPacketId ?: null;
             if ($data['packet_code'] !== '') {
                 $packetId = $packets[$data['packet_code']] ?? null;
                 if (! $packetId) $errors[] = 'Packet ' . $data['packet_code'] . ' not found';

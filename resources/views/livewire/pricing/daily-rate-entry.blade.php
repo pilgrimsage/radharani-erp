@@ -14,6 +14,12 @@
         @endforeach
     </div>
 
+    @if ($zeroWarning)
+        <div class="mb-4 flex items-start gap-3 px-4 py-3 rounded-control bg-warning-bg text-warning text-[13px]">
+            <x-ui.icon name="alert-triangle" :size="16" class="shrink-0 mt-0.5" /> {{ $zeroWarning }}
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         <x-ui.card title="Enter today's rates" subtitle="One entry per metal, logged with the time it was set." icon="coins">
             <form wire:submit="save">

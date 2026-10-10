@@ -10,7 +10,8 @@ class StockCodes
     /** @param class-string<Model> $model */
     public static function next(string $model, string $prefix): string
     {
-        $codes = $model::where('code', 'like', $prefix . '%')->pluck('code');
+        $base = method_exists($model, 'bootSoftDeletes') ? $model::withTrashed() : $model::query();
+        $codes = (clone $base)->where('code', 'like', $prefix . '%')->pluck('code');
 
         $max = 0;
         $width = 2;
@@ -24,7 +25,7 @@ class StockCodes
         do {
             $max++;
             $candidate = $prefix . str_pad((string) $max, $width, '0', STR_PAD_LEFT);
-        } while ($model::where('code', $candidate)->exists());
+        } while ((clone $base)->where('code', $candidate)->exists());
 
         return $candidate;
     }

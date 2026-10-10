@@ -168,6 +168,8 @@
                         </x-ui.field>
                     </div>
 
+                    <x-movement.done-by />
+
                     <x-ui.field label="Note" for="kd-note" error="note" optional>
                         <input id="kd-note" type="text" wire:model="note" maxlength="255" class="rj-input" placeholder="Anything the next person should know">
                     </x-ui.field>

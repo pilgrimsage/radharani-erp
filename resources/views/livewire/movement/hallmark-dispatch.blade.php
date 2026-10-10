@@ -53,6 +53,8 @@
                         </x-ui.field>
                     </div>
 
+                    <x-movement.done-by />
+
                     <x-ui.field label="Note" for="hd-note" error="note" optional>
                         <input id="hd-note" type="text" wire:model="note" maxlength="255" class="rj-input" placeholder="e.g. challan number">
                     </x-ui.field>

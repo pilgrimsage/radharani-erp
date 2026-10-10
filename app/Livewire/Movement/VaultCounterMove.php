@@ -19,6 +19,8 @@ use Livewire\Component;
  */
 class VaultCounterMove extends Component
 {
+    use \App\Livewire\Movement\Concerns\HasDoneBy;
+
     #[Url(except: 'to_counter')]
     public string $direction = 'to_counter'; // to_counter | to_vault
 
@@ -42,6 +44,22 @@ class VaultCounterMove extends Component
     // The code arrives as an argument (the field is cleared in the browser on
     // Enter), so fast consecutive scans queue up instead of overwriting each other.
     public function scan(string $raw): void
+    {
+        // Several boxes at once: codes pasted or scanned together, separated by spaces, commas or new lines.
+        $codes = preg_split('/[\s,;]+/', trim($raw), -1, PREG_SPLIT_NO_EMPTY);
+        if (count($codes) > 1) {
+            foreach ($codes as $one) {
+                $this->scanOne($one);
+            }
+            $this->dispatch('scan-ready');
+
+            return;
+        }
+
+        $this->scanOne($raw);
+    }
+
+    private function scanOne(string $raw): void
     {
         $code = StockLookup::normalize($raw);
         if ($code === '') {
@@ -93,6 +111,42 @@ class VaultCounterMove extends Component
         $this->feedback($warning ? 'warning' : 'success', $label, $warning ? "Added. {$warning} today." : 'Added to the tray.');
     }
 
+    // One click from the "still on the counter" list: record the return straight away.
+    public function returnNow(string $type, int $id): void
+    {
+        if (! in_array($type, ['item', 'packet', 'box'], true)) {
+            return;
+        }
+
+        $last = $this->lastVaultMove($type, $id);
+        if ($last?->movement_type !== 'vault_out') {
+            $this->dispatch('toast', message: 'That is already recorded as back in the vault.', type: 'info');
+
+            return;
+        }
+
+        $model = match ($type) {
+            'item' => Item::find($id),
+            'packet' => \App\Models\Stock\Packet::find($id),
+            'box' => \App\Models\Stock\Box::find($id),
+        };
+        if (! $model) {
+            return;
+        }
+
+        Movement::create([
+                ...$this->doneByAttributes(),
+            'trackable_type' => $type,
+            'trackable_id' => $id,
+            'movement_type' => 'vault_in',
+            'purpose_label' => 'Closing stock',
+            'user_id' => Auth::id(),
+            'weight_at_dispatch' => $type === 'item' ? (float) $model->weight : null,
+        ]);
+
+        $this->dispatch('toast', message: ($type === 'item' ? $model->label : $model->code) . ' returned to the vault.', type: 'success');
+    }
+
     public function removeFromTray(int $index): void
     {
         unset($this->tray[$index]);
@@ -124,6 +178,7 @@ class VaultCounterMove extends Component
                 }
 
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => $t['type'],
                     'trackable_id' => $t['id'],
                     'movement_type' => $type,
@@ -209,15 +264,39 @@ class VaultCounterMove extends Component
             ];
         });
 
+        // A box or packet with sold pieces inside shows it on the row.
+        $counterRows = $counterRows->map(function ($r) {
+            $r['soldInside'] = match ($r['type']) {
+                'packet' => Item::where('packet_id', $r['model']?->id)->whereIn('status', ['sold', 'reserved'])->count(),
+                'box' => Item::whereIn('packet_id', \App\Models\Stock\Packet::where('box_id', $r['model']?->id)->select('id'))
+                    ->whereIn('status', ['sold', 'reserved'])->count(),
+                default => 0,
+            };
+
+            return $r;
+        });
+
         $expected = $counterRows->where('sold', false);
+
+        // Today's out/in times side by side, one row per box / packet / piece.
+        $pairs = $today->groupBy(fn ($m) => $m->trackable_type . ':' . $m->trackable_id)->map(function ($rows) use ($loaded) {
+            $first = $rows->first();
+
+            return Trackables::describe($loaded, $first->trackable_type, $first->trackable_id) + [
+                'out' => $rows->where('movement_type', 'vault_out')->sortBy('id')->first(),
+                'in' => $rows->where('movement_type', 'vault_in')->sortByDesc('id')->first(),
+                'key' => $first->trackable_type . ':' . $first->trackable_id,
+            ];
+        })->values();
 
         return view('livewire.movement.vault-counter-move', [
             'counterRows' => $counterRows,
             'expectedCount' => $expected->count(),
             'missingCount' => $expected->where('scanned', false)->count(),
-            'today' => $today->map(fn ($m) => Trackables::describe($loaded, $m->trackable_type, $m->trackable_id) + [
-                'movement' => $m,
-            ]),
+            'pairs' => $pairs,
+            'movesToday' => $today->count(),
+            'byUser' => $counterRows->where('sold', false)->groupBy('by')->map->count()->sortDesc(),
+            'boxesOut' => $counterRows->where('type', 'box')->where('sold', false)->count(),
             'stats' => [
                 'sent' => $today->where('movement_type', 'vault_out')->count(),
                 'returned' => $today->where('movement_type', 'vault_in')->count(),

@@ -2,12 +2,13 @@
 namespace App\Models\Stock;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class Packet extends Model
 {
-    use LogsActivity;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = ['box_id', 'code', 'label'];
 
