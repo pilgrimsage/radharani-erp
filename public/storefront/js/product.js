@@ -175,7 +175,7 @@
     '<div class="price">' +
     '<div class="price__row"><b data-price>' +
     inr(pr.total) +
-    "</b><small>incl. making and GST</small></div>" +
+    "</b><small>incl. making charges</small></div>" +
     "<small>Worked out at today's " +
     esc(pur.metal) +
     " rate of " +
@@ -300,11 +300,6 @@
       : "") +
     '<tr class="sub"><td>Subtotal</td><td>' +
     inr(pr.sub) +
-    "</td></tr>" +
-    "<tr><td>GST (" +
-    pr.gstPct +
-    "%)</td><td>" +
-    inr(pr.gst) +
     "</td></tr>" +
     '<tr class="total"><td>Total</td><td>' +
     inr(pr.total) +

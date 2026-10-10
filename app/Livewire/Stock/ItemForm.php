@@ -3,9 +3,9 @@ namespace App\Livewire\Stock;
 
 use App\Models\Purchase\PurchaseItem;
 use App\Models\Stock\Item;
+use App\Models\Stock\ItemCategory;
 use App\Models\Stock\ItemImage;
 use App\Models\Stock\Packet;
-use App\Models\Storefront\StorefrontCategory;
 use App\Models\Storefront\StorefrontCollection;
 use App\Services\PhotoCompressionService;
 use App\Services\PricingService;
@@ -56,6 +56,7 @@ class ItemForm extends Component
     public string $huid_code = '';
     public string $metal = 'gold';
     public string $category = '';
+    public ?int $categoryId = null;
     public string $purity = '';
     public $weight = '';
     public string $description = '';
@@ -103,7 +104,7 @@ class ItemForm extends Component
             'packet_id' => ['nullable', 'exists:packets,id'],
             'huid_code' => ['nullable', 'string', 'max:20', Rule::unique('items', 'huid_code')->ignore($this->editingId)],
             'metal' => ['required', Rule::in(array_keys(self::METALS))],
-            'category' => ['required', 'string', 'max:50'],
+            'categoryId' => ['required', Rule::exists('item_categories', 'id')->where('metal', $this->metal)],
             'purity' => ['required', 'string', 'max:10'],
             'weight' => ['required', 'numeric', 'min:0.001', 'max:99999'],
             'description' => ['nullable', 'string', 'max:100'],
@@ -179,7 +180,7 @@ class ItemForm extends Component
     {
         $this->resetValidation();
         $this->reset([
-            'editingId', 'packet_id', 'huid_code', 'category', 'purity', 'weight', 'description', 'hsn_code',
+            'editingId', 'packet_id', 'huid_code', 'category', 'categoryId', 'purity', 'weight', 'description', 'hsn_code',
             'making_value', 'pairMode', 'partnerWeight', 'partnerHuid', 'pairSearch', 'pairWithId', 'currentPairId',
             'taggingPurchaseItemId', 'net_weight', 'stones', 'stone_value', 'tab',
             'show_on_website', 'web_name', 'web_description', 'storefront_collection_id', 'audiences', 'occasions',
@@ -197,6 +198,7 @@ class ItemForm extends Component
         $this->huid_code = (string) $item->huid_code;
         $this->metal = $item->metal ?? 'gold';
         $this->category = $item->category;
+        $this->categoryId = $item->category_id ?? ItemCategory::forMetal($this->metal)->where('name', $item->category)->value('id');
         $this->purity = $item->purity;
         $this->weight = (string) (float) $item->weight;
         $this->description = (string) $item->description;
@@ -255,13 +257,25 @@ class ItemForm extends Component
         $this->taggingPurchaseItemId = $line->id;
         $this->metal = $line->metal ?? 'gold';
         $this->category = (string) $line->category;
+        $this->categoryId = ItemCategory::forMetal($this->metal)->where('name', $line->category)->value('id');
         $this->purity = (string) $line->purity;
         $this->weight = $line->weight ? (string) (float) $line->weight : '';
         $this->description = (string) $line->description;
     }
 
+    // Keep the plain name in step: pricing previews and the pairing search filter on it.
+    public function updatedCategoryId(): void
+    {
+        $this->category = (string) ItemCategory::find($this->categoryId)?->name;
+    }
+
     public function updatedMetal(): void
     {
+        // A subcategory belongs to one metal, so the old pick no longer applies.
+        if ($this->categoryId && ! ItemCategory::forMetal($this->metal)->whereKey($this->categoryId)->exists()) {
+            $this->categoryId = null;
+            $this->category = '';
+        }
         // Purity formats differ by metal (22K vs 92.5), so a stale value would be wrong.
         if ($this->purity && ! in_array($this->purity, self::PURITIES[$this->metal] ?? [], true)) {
             $this->purity = '';
@@ -303,7 +317,8 @@ class ItemForm extends Component
             'packet_id' => $this->packet_id,
             'huid_code' => $this->huid_code ?: null,
             'metal' => $this->metal,
-            'category' => trim($this->category),
+            'category' => ItemCategory::findOrFail($this->categoryId)->name,
+            'category_id' => $this->categoryId,
             'purity' => trim($this->purity),
             'weight' => $this->weight,
             'description' => $this->description ?: null,
@@ -434,7 +449,7 @@ class ItemForm extends Component
     public function render()
     {
         return view('livewire.stock.item-form', [
-            'categories' => $this->showForm ? Item::query()->distinct()->orderBy('category')->pluck('category') : collect(),
+            'categories' => $this->showForm ? ItemCategory::active()->forMetal($this->metal)->orderBy('sort_order')->orderBy('name')->get(['id', 'name']) : collect(),
             'packetsByBox' => $this->showForm
                 ? Packet::with('box:id,code')->orderBy('code')->get(['id', 'code', 'label', 'box_id'])->groupBy(fn ($p) => $p->box?->code ?? 'Not in a box')
                 : collect(),
@@ -452,7 +467,7 @@ class ItemForm extends Component
             'currentPair' => $this->currentPairId ? Item::find($this->currentPairId) : null,
             'estimate' => $this->showForm ? $this->estimate() : null,
             'collections' => $this->showForm && $this->tab === 'website' ? StorefrontCollection::orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'is_active']) : collect(),
-            'webCategory' => $this->showForm && $this->tab === 'website' && $this->category ? StorefrontCategory::forStockCategory($this->category) : null,
+            'webCategory' => $this->showForm && $this->tab === 'website' && $this->categoryId ? ItemCategory::active()->find($this->categoryId) : null,
         ]);
     }
 

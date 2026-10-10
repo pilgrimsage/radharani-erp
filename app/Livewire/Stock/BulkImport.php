@@ -277,6 +277,8 @@ class BulkImport extends Component
                     'internal_code' => $d['huid_code'] ? null : Item::generateInternalCode(),
                     'metal' => $d['metal'],
                     'category' => $d['category'],
+                    // Matched to the owner's category tree; a new name is added under that metal for the owner to tidy.
+                    'category_id' => \App\Models\Stock\ItemCategory::firstOrCreate(['metal' => $d['metal'], 'name' => $d['category']])->id,
                     'purity' => $d['purity'],
                     'weight' => (float) $d['weight'],
                     'description' => $d['description'],

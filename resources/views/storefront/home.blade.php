@@ -214,7 +214,6 @@
         <div class="bill__row" data-bill-row><span>Net weight</span><b data-count="{{ $bill['weight'] }}" data-suffix=".000 g">{{ $bill['weight'] }}.000 g</b></div>
         <div class="bill__row bill__row--sub" data-bill-row><span>Gold value</span><b data-count="{{ $bill['value'] }}" data-prefix="₹">{{ $inr($bill['value']) }}</b></div>
         <div class="bill__row" data-bill-row><span>Making charges<small>12% of gold value</small></span><b data-count="{{ $bill['making'] }}" data-prefix="₹">{{ $inr($bill['making']) }}</b></div>
-        <div class="bill__row" data-bill-row><span>GST<small>3% on gold value and making</small></span><b data-count="{{ $bill['gst'] }}" data-prefix="₹">{{ $inr($bill['gst']) }}</b></div>
         <div class="bill__total" data-bill-row><span>You pay</span><b data-count="{{ $bill['total'] }}" data-prefix="₹">{{ $inr($bill['total']) }}</b></div>
         <p class="bill__note">Example only. Making charges vary by design and are quoted before you decide.</p>
       </div>

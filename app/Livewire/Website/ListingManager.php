@@ -3,7 +3,6 @@ namespace App\Livewire\Website;
 
 use App\Livewire\Concerns\WithDataTable;
 use App\Models\Stock\Item;
-use App\Models\Storefront\StorefrontCategory;
 use App\Services\PricingService;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -70,8 +69,8 @@ class ListingManager extends Component
 
     public function render()
     {
-        $categoryMap = StorefrontCategory::lookup();
-        $mappedKeys = array_keys($categoryMap);
+        // A piece can be live when its subcategory in the owner's tree is on.
+        $activeIds = \App\Models\Stock\ItemCategory::active()->pluck('id')->all() ?: [0];
 
         $query = Item::query()
             ->withCount('images')
@@ -84,21 +83,21 @@ class ListingManager extends Component
                 ->orWhere('category', 'like', "%{$this->search}%")
                 ->orWhere('description', 'like', "%{$this->search}%")))
             ->when($this->stockCategory, fn ($q) => $q->where('category', $this->stockCategory))
-            ->when($this->state === 'live', fn ($q) => $q->onWebsite()->whereIn(\DB::raw('LOWER(TRIM(category))'), $mappedKeys ?: ['']))
+            ->when($this->state === 'live', fn ($q) => $q->onWebsite()->whereIn('category_id', $activeIds))
             ->when($this->state === 'waiting', fn ($q) => $q->where('show_on_website', true)->where(fn ($q) => $q
                 ->where('status', '!=', 'in_stock')->orWhereNull('web_name')
-                ->orWhereNotIn(\DB::raw('LOWER(TRIM(category))'), $mappedKeys ?: [''])))
+                ->orWhereNotIn('category_id', $activeIds)->orWhereNull('category_id')))
             ->when($this->state === 'off', fn ($q) => $q->where('show_on_website', false));
 
         $items = $this->applySorting($query)->paginate($this->perPageValue());
         $pricing = app(PricingService::class);
 
-        $rows = $items->getCollection()->map(function (Item $item) use ($categoryMap, $pricing) {
-            $webCategory = $categoryMap[mb_strtolower(trim($item->category))] ?? null;
+        $rows = $items->getCollection()->map(function (Item $item) use ($pricing) {
+            $webCategory = $item->categoryRow?->is_active ? $item->categoryRow : null;
             $reason = match (true) {
                 ! $item->show_on_website => null,
                 ! $item->web_name => 'Needs a website name',
-                ! $webCategory => "No website category includes “{$item->category}”",
+                ! $webCategory => "“{$item->category}” is missing or switched off in Categories",
                 $item->status !== 'in_stock' => 'Back on the site once it is in stock',
                 default => null,
             };
@@ -113,7 +112,7 @@ class ListingManager extends Component
         });
 
         $counts = [
-            'live' => Item::onWebsite()->whereIn(\DB::raw('LOWER(TRIM(category))'), $mappedKeys ?: [''])->count(),
+            'live' => Item::onWebsite()->whereIn('category_id', $activeIds)->count(),
             'photos' => Item::onWebsite()->doesntHave('images')->count(),
         ];
 

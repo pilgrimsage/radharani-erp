@@ -15,6 +15,7 @@ $nav = [
     ['key' => 'stock', 'label' => 'Stock', 'icon' => 'gem', 'can' => 'stock.manage', 'items' => [
         ['route' => 'stock.items', 'label' => 'Inventory'],
         ['route' => 'stock.boxes', 'label' => 'Boxes & Packets'],
+        ['route' => 'stock.categories', 'label' => 'Categories', 'can' => 'category.manage'],
         ['route' => 'stock.assign', 'label' => 'Change Item location'],
         ['route' => 'stock.qr-codes', 'label' => 'QR Codes'],
         ['route' => 'stock.import', 'label' => 'Bulk Import'],
@@ -66,7 +67,7 @@ $nav = [
     ]],
     ['key' => 'website', 'label' => 'Website', 'icon' => 'globe', 'can' => 'website.manage', 'items' => [
         ['route' => 'website.listings', 'label' => 'Listings'],
-        ['route' => 'website.categories', 'label' => 'Categories'],
+        // Website categories now come from Stock > Categories (8 Oct change list, 5.2).
         ['route' => 'website.collections', 'label' => 'Collections'],
         ['route' => 'website.settings', 'label' => 'Settings'],
     ]],

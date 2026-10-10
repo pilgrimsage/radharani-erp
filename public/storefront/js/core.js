@@ -9,7 +9,7 @@
  *
  * RJ_DATA comes from the ERP (App\Services\StorefrontCatalog): pieces,
  * categories, collections, today's rates, shop details and page URLs.
- * Prices arrive already worked out (PricingService + GST); nothing here
+ * Prices arrive already worked out (PricingService, no GST); nothing here
  * computes a price.
  */
 (function () {
@@ -186,18 +186,24 @@
 
   /* categories ticked "in menu bar" sit in the bar (first five if none are);
      every category is in the "All jewellery" menu */
-  var menuCats = D.categories.filter(function (c) {
-    return c.inMenu;
-  });
-  var catLinks = (menuCats.length ? menuCats : D.categories)
-    .slice(0, 5)
-    .map(function (c) {
+  /* top bar: the metals from the category tree, each opening its subcategories */
+  var catLinks = (D.menu || [])
+    .map(function (m) {
       var cur =
-        page === "shop" && params.get("category") === c.slug
+        page === "shop" && params.get("metal") === m.metal
           ? ' class="is-current" aria-current="page"'
           : "";
       return (
-        '<a href="' + shop({ category: c.slug }) + '"' + cur + ">" + esc(c.name) + "</a>"
+        '<div class="has-mega"><button type="button" aria-haspopup="true"' + cur + ">" +
+        esc(m.label) + ' <i class="ph ph-caret-down"></i></button>' +
+        '<div class="mega"><div class="wrap"><div><h4>' + esc(m.label) + "</h4>" +
+        '<ul><li><a href="' + shop({ metal: m.metal }) + '">All ' + esc(m.label) + "</a></li>" +
+        m.items
+          .map(function (c) {
+            return '<li><a href="' + shop({ category: c.slug }) + '">' + esc(c.name) + "</a></li>";
+          })
+          .join("") +
+        "</ul></div></div></div></div>"
       );
     })
     .join("");
@@ -316,16 +322,21 @@
     '<div class="has-mega">' +
     '<button type="button" aria-haspopup="true">All jewellery <i class="ph ph-caret-down"></i></button>' +
     '<div class="mega"><div class="wrap">' +
-    "<div><h4>By category</h4>" +
-    list(
-      D.categories.map(function (c) {
-        return [c.name, shop({ category: c.slug })];
-      }),
-    ) +
-    "</div>" +
-    "<div><h4>By metal</h4>" +
-    list(metalLinks) +
-    "</div>" +
+    (D.menu || [])
+      .map(function (m) {
+        return (
+          "<div><h4>" + esc(m.label) + "</h4>" +
+          list(
+            [["All " + m.label, shop({ metal: m.metal })]].concat(
+              m.items.map(function (c) {
+                return [esc(c.name), shop({ category: c.slug })];
+              }),
+            ),
+          ) +
+          "</div>"
+        );
+      })
+      .join("") +
     "<div><h4>By budget</h4>" +
     list(
       D.budgets.map(function (b) {

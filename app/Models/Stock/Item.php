@@ -18,7 +18,7 @@ class Item extends Model
     public const CODE_ALPHABET = '234679ACDEFGHJKMNPQRTUVWXY';
 
     protected $fillable = [
-        'packet_id', 'metal', 'huid_code', 'internal_code', 'category', 'purity',
+        'packet_id', 'metal', 'huid_code', 'internal_code', 'category', 'category_id', 'purity',
         'weight', 'description', 'hsn_code', 'making_type', 'making_value',
         'pair_group_id', 'source_karigar_batch_id', 'source_purchase_item_id',
         'status', 'net_weight', 'stones', 'stone_value',
@@ -41,6 +41,12 @@ class Item extends Model
     protected static function booted(): void
     {
         static::saving(function (Item $item) {
+            // Every piece sits in the Metal > Subcategory tree. Code that only knows the
+            // category name (imports, seeders, tagging) is linked to it, adding the row if new.
+            if (! $item->category_id && trim((string) $item->category) !== '') {
+                $item->category_id = ItemCategory::firstOrCreate(['metal' => $item->metal ?: 'gold', 'name' => trim($item->category)])->id;
+            }
+
             if ($item->show_on_website && $item->web_name) {
                 $item->slug ??= static::makeSlug($item->web_name, $item->huid_code ?: $item->internal_code, $item->id);
                 $item->listed_at ??= now();
@@ -97,6 +103,11 @@ class Item extends Model
     public function sourcePurchaseItem()
     {
         return $this->belongsTo(PurchaseItem::class, 'source_purchase_item_id');
+    }
+
+    public function categoryRow()
+    {
+        return $this->belongsTo(ItemCategory::class, 'category_id');
     }
 
     public function qrCodes()
