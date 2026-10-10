@@ -1,153 +1,110 @@
 <div>
-    <x-ui.page-header title="New Custom Order" subtitle="Note which of the two rate rules applies before the customer leaves."
-        :crumbs="[['label' => 'Custom Orders'], ['label' => 'New Order']]" />
+    <x-ui.page-header title="New Custom Order" subtitle="The customer, the product, then the advance."
+        :crumbs="[['label' => 'Custom Orders', 'href' => route('orders.board')], ['label' => 'New Order']]" />
 
-    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
-        <x-ui.card>
-            <form wire:submit="submit" class="space-y-4">
-                <div class="relative" x-data="{ open: true }" x-on:click.outside="open = false">
-                    <x-ui.field label="Customer" error="customerId">
-                        <div class="rj-input-icon">
-                            <x-ui.icon name="search" :size="16" />
-                            <input type="text" wire:model.live.debounce.300ms="customerSearch" x-on:focus="open = true" x-on:input="open = true"
-                                autocomplete="off" placeholder="Search by name or phone..." class="rj-input">
-                        </div>
-                    </x-ui.field>
+    <x-ui.stepper :steps="$steps" :current="$step" :reach="$reach" />
 
-                    @if ($customerId && ! $customerSearch)
-                        <div class="mt-2 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-gold-tint ring-1 ring-gold-soft">
-                            <x-ui.icon name="user-check" :size="15" class="text-gold-dark" />
-                            <span class="text-[13px] font-semibold text-ink_text-primary">Customer selected</span>
-                        </div>
+    <div class="max-w-[820px]">
+        {{-- ============================================ 1. CUSTOMER --}}
+        @if ($step === 1)
+            <x-ui.card title="Who is it for" icon="user">
+                @if ($customer)
+                    <div class="flex items-center gap-3 p-4 rounded-xl bg-gold-tint/50 ring-1 ring-inset ring-gold-soft/60">
+                        <span class="w-10 h-10 rounded-full gold-sheen text-white flex items-center justify-center font-semibold">{{ mb_substr($customer->name, 0, 1) }}</span>
+                        <div class="flex-1"><div class="font-semibold text-ink_text-primary">{{ $customer->name }}</div><div class="text-[12.5px] text-ink_text-secondary tabular">{{ $customer->phone }}</div></div>
+                        <x-ui.button variant="ghost" size="sm" wire:click="clearCustomer">Change</x-ui.button>
+                    </div>
+                @else
+                    <div class="rj-input-icon"><x-ui.icon name="search" :size="16" /><input id="oe-customer" type="text" wire:model.live.debounce.250ms="customerSearch" placeholder="Search by name or phone" class="rj-input" autocomplete="off" autofocus></div>
+                    @if ($customerResults->isNotEmpty())
+                        <ul class="mt-2 rounded-xl border border-line-light divide-y divide-line-light overflow-hidden">
+                            @foreach ($customerResults as $c)<li><button type="button" wire:click="chooseCustomer({{ $c->id }})" class="w-full text-left px-4 py-2.5 hover:bg-surface-sunken flex justify-between"><span class="font-semibold">{{ $c->name }}</span><span class="text-ink_text-muted tabular">{{ $c->phone }}</span></button></li>@endforeach
+                        </ul>
                     @endif
-
-                    @if ($customerSearch && $customerResults->isNotEmpty())
-                        <div x-show="open" class="absolute left-0 right-0 mt-2 bg-white border border-line-light rounded-xl shadow-pop p-1.5 z-dropdown">
-                            @foreach ($customerResults as $c)
-                                <button type="button" wire:click="$set('customerId', {{ $c->id }})"
-                                    class="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-surface-muted text-left {{ $customerId === $c->id ? 'bg-gold-tint' : '' }}">
-                                    <span class="w-8 h-8 rounded-full bg-surface-sunken ring-1 ring-inset ring-line-light flex items-center justify-center text-ink_text-muted shrink-0"><x-ui.icon name="user" :size="14" /></span>
-                                    <span class="flex-1 min-w-0">
-                                        <span class="block text-[13px] font-semibold text-ink_text-primary truncate">{{ $c->name }}</span>
-                                        <span class="block text-[12px] text-ink_text-muted">{{ $c->phone }}</span>
-                                    </span>
-                                    @if ($customerId === $c->id) <x-ui.icon name="check" :size="14" class="text-gold-dark shrink-0" /> @endif
-                                </button>
-                            @endforeach
-                        </div>
+                    <div class="mt-3"><x-ui.button variant="secondary" size="sm" icon="plus" wire:click="$toggle('addingCustomer')">New customer</x-ui.button></div>
+                    @if ($addingCustomer)
+                        <form wire:submit="saveNewCustomer" class="mt-4 p-4 rounded-xl ring-1 ring-inset ring-line-light grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                            <x-ui.field label="Name" for="oc-name" error="newName"><input id="oc-name" type="text" wire:model="newName" class="rj-input" maxlength="100"></x-ui.field>
+                            <x-ui.field label="Mobile number" for="oc-phone" error="newPhone"><input id="oc-phone" type="text" wire:model="newPhone" class="rj-input tabular" inputmode="numeric"></x-ui.field>
+                            <x-ui.button type="submit" icon="check" target="saveNewCustomer">Add</x-ui.button>
+                        </form>
                     @endif
-                </div>
+                @endif
+                @error('customerId')<p class="rj-error"><x-ui.icon name="alert-triangle" :size="12" />{{ $message }}</p>@enderror
+            </x-ui.card>
+        @endif
 
-                <x-ui.field label="What's being ordered" for="no-desc" error="productDescription">
-                    <input id="no-desc" type="text" wire:model="productDescription" placeholder="e.g. 22K bridal necklace set, custom design" class="rj-input">
-                </x-ui.field>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <x-ui.field label="Category" for="no-cat" optional>
-                        <input id="no-cat" type="text" wire:model="category" placeholder="e.g. Necklace" class="rj-input">
-                    </x-ui.field>
-                    <x-ui.field label="Metal" for="no-metal" error="metal" :optional="! $fullPaymentNow">
-                        <select id="no-metal" wire:model="metal" class="rj-select">
-                            <option value="">Select metal</option>
-                            <option value="gold">Gold</option>
-                            <option value="silver">Silver</option>
-                            <option value="titanium">Titanium</option>
-                            <option value="platinum">Platinum</option>
+        {{-- ============================================ 2. PRODUCT --}}
+        @if ($step === 2)
+            <x-ui.card title="The product" icon="gem">
+                <div class="space-y-5">
+                    <x-ui.field label="Where will it come from" for="oe-src">
+                        <select id="oe-src" wire:model.live="sourcing" class="rj-select">
+                            @foreach ($sourcings as $k => [$label, $hint])<option value="{{ $k }}">{{ $label }}: {{ $hint }}</option>@endforeach
                         </select>
+                        <p class="rj-help">Path: {{ collect($sourcings[$sourcing][2])->map(fn ($s) => ['karigar' => 'Karigar', 'hallmark' => 'Hallmarking', 'sales' => 'Sales'][$s])->implode(' → ') }}</p>
                     </x-ui.field>
-                    <x-ui.field label="Estimated weight" for="no-weight" error="estimatedWeight" optional>
-                        <div class="rj-input-icon">
-                            <x-ui.icon name="scale" :size="16" />
-                            <input id="no-weight" type="number" step="0.001" min="0" wire:model="estimatedWeight" class="rj-input tabular">
-                        </div>
-                    </x-ui.field>
-                </div>
 
-                <div>
-                    <label class="inline-flex items-center gap-2.5 text-[13px] font-semibold text-ink_text-primary cursor-pointer select-none">
-                        <input type="checkbox" class="rj-checkbox" wire:model.live="inStock">
-                        Product is currently in stock
-                    </label>
-
-                    @if ($inStock)
-                        <div class="relative mt-3" x-data="{ open: true }" x-on:click.outside="open = false">
-                            <div class="rj-input-icon">
-                                <x-ui.icon name="search" :size="16" />
-                                <x-ui.scan-button target="#order-item-search" title="Scan the piece" class="absolute right-1.5 top-1/2 -translate-y-1/2 !w-8 !h-8" />
-                                <input id="order-item-search" type="text" wire:model.live.debounce.300ms="existingItemSearch" x-on:focus="open = true" x-on:input="open = true"
-                                    autocomplete="off" placeholder="Search existing item by HUID or code..." class="rj-input pr-12">
-                            </div>
-                            @if ($existingItemId && ! $existingItemSearch)
-                                <div class="mt-2 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-gold-tint ring-1 ring-gold-soft">
-                                    <x-ui.icon name="gem" :size="15" class="text-gold-dark" />
-                                    <span class="text-[13px] font-semibold text-ink_text-primary">Item linked</span>
-                                </div>
+                    @if ($sourcing === 'stock')
+                        <div>
+                            @if ($item)
+                                <div class="flex items-center gap-3 p-3.5 rounded-xl bg-gold-tint/50 ring-1 ring-inset ring-gold-soft/60"><span class="rj-code">{{ $item->label }}</span><span class="text-[12.5px] text-ink_text-secondary flex-1">{{ $item->category }} · {{ number_format($item->weight, 3) }} g</span><x-ui.button variant="ghost" size="sm" wire:click="clearItem">Change</x-ui.button></div>
+                                <p class="rj-help">Anyone selling it later will see a warning that it is held for this customer.</p>
+                            @else
+                                <div class="rj-input-icon"><x-ui.icon name="scan" :size="16" /><input type="text" wire:model.live.debounce.250ms="existingItemSearch" placeholder="HUID, code, packet or box" class="rj-input" aria-label="Find the piece" autocomplete="off"></div>
+                                @if ($itemResults->isNotEmpty())
+                                    <ul class="mt-2 rounded-xl border border-line-light divide-y divide-line-light overflow-hidden">@foreach ($itemResults as $i)<li><button type="button" wire:click="chooseItem({{ $i->id }})" class="w-full text-left px-4 py-2.5 hover:bg-surface-sunken"><span class="rj-code">{{ $i->label }}</span> <span class="text-ink_text-muted text-[12.5px]">{{ $i->category }} · {{ number_format($i->weight, 3) }} g</span></button></li>@endforeach</ul>
+                                @endif
                             @endif
-                            @if ($existingItemSearch && $itemResults->isNotEmpty())
-                                <div x-show="open" class="absolute left-0 right-0 mt-2 bg-white border border-line-light rounded-xl shadow-pop p-1.5 z-dropdown">
-                                    @foreach ($itemResults as $it)
-                                        <button type="button" wire:click="$set('existingItemId', {{ $it->id }})"
-                                            class="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-surface-muted text-left {{ $existingItemId === $it->id ? 'bg-gold-tint' : '' }}">
-                                            <span class="rj-code text-[12px]">{{ $it->huid_code ?? $it->internal_code }}</span>
-                                            <span class="flex-1 text-[12.5px] text-ink_text-muted truncate">{{ $it->category }} · {{ number_format($it->weight, 3) }}g</span>
-                                            @if ($existingItemId === $it->id) <x-ui.icon name="check" :size="14" class="text-gold-dark shrink-0" /> @endif
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
+                            @error('existingItemId')<p class="rj-error">{{ $message }}</p>@enderror
                         </div>
-                    @else
-                        <p class="text-[12.5px] text-ink_text-secondary mt-2">Needs to be made — this becomes a Karigar Dispatch (Raw Material Issue) once confirmed.</p>
                     @endif
-                </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <x-ui.field label="Estimated value" for="no-value" error="estimatedValue">
-                        <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink_text-muted text-[14px] font-semibold pointer-events-none">₹</span>
-                            <input id="no-value" type="number" step="0.01" min="0" wire:model="estimatedValue" class="rj-input tabular pl-8">
-                        </div>
-                    </x-ui.field>
-                    <x-ui.field label="Expected ready by" for="no-ready" error="expectedReadyDate" optional hint="Shown on the Status Board and used to flag overdue orders">
-                        <input id="no-ready" type="date" wire:model="expectedReadyDate" class="rj-input">
+                    <x-ui.field label="Description" for="oe-desc" error="productDescription"><input id="oe-desc" type="text" wire:model="productDescription" maxlength="200" class="rj-input @error('productDescription') is-invalid @enderror"></x-ui.field>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <x-ui.field label="Metal" for="oe-metal"><select id="oe-metal" wire:model.live="metal" class="rj-select"><option value="gold">Gold</option><option value="silver">Silver</option><option value="platinum">Platinum</option><option value="titanium">Titanium</option></select></x-ui.field>
+                        <x-ui.field label="Subcategory" for="oe-cat" optional><select id="oe-cat" wire:model="category" class="rj-select"><option value="">Any</option>@foreach ($subcategories as $c)<option value="{{ $c->name }}">{{ $c->name }}</option>@endforeach</select></x-ui.field>
+                        <x-ui.field label="Estimated weight (g)" for="oe-w" error="estimatedWeight" optional><input id="oe-w" type="number" step="0.001" min="0" wire:model="estimatedWeight" class="rj-input tabular"></x-ui.field>
+                    </div>
+                    <x-ui.field label="Expected ready by" for="oe-ready" error="expectedReadyDate" optional><input id="oe-ready" type="date" min="{{ today()->toDateString() }}" wire:model="expectedReadyDate" class="rj-input max-w-[220px]"></x-ui.field>
+
+                    <x-ui.field label="Reference images" for="oe-img" error="images.*" optional hint="Pictures the customer brought. Compressed when saved.">
+                        <input id="oe-img" type="file" wire:model="images" accept="image/*" multiple class="rj-input">
+                        @if ($images)
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                @foreach ($images as $i => $img)
+                                    <div class="relative" wire:key="oi-{{ $i }}"><img src="{{ $img->temporaryUrl() }}" alt="" class="w-20 h-20 rounded-lg object-cover ring-1 ring-line">
+                                        <button type="button" wire:click="removeImage({{ $i }})" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white shadow ring-1 ring-line flex items-center justify-center" aria-label="Remove image"><x-ui.icon name="x" :size="12" /></button></div>
+                                @endforeach
+                            </div>
+                        @endif
                     </x-ui.field>
                 </div>
+            </x-ui.card>
+        @endif
 
-                <div class="rounded-xl p-4 {{ $fullPaymentNow ? 'bg-success-bg ring-1 ring-inset ring-success/20' : 'bg-surface-sunken ring-1 ring-inset ring-line-light' }}">
-                    <label class="flex items-center gap-2.5 text-[13px] font-bold text-ink_text-primary cursor-pointer select-none mb-1">
-                        <input type="checkbox" class="rj-checkbox" wire:model.live="fullPaymentNow">
-                        Customer is paying the full value now
+        {{-- ============================================ 3. ADVANCE --}}
+        @if ($step === 3)
+            <x-ui.card title="Advance" subtitle="What the customer pays now" icon="coins">
+                <div class="space-y-5">
+                    <label class="flex items-start gap-3 p-4 rounded-xl ring-1 ring-inset ring-line-light cursor-pointer">
+                        <input type="checkbox" wire:model.live="fullPaymentNow" class="rj-checkbox mt-0.5">
+                        <span><span class="block text-[13.5px] font-semibold">Full payment now</span><span class="block text-[12.5px] text-ink_text-secondary">The metal rate is locked to today. Otherwise the rate on the day of delivery applies.</span></span>
                     </label>
                     @if ($fullPaymentNow)
-                        <div class="flex items-center gap-1.5 text-[12.5px] font-bold text-success mt-2">
-                            <x-ui.icon name="lock" :size="13" /> Rate will be LOCKED to today's rate for this order.
-                        </div>
+                        <x-ui.field label="Full value (₹)" for="oe-val" error="estimatedValue"><input id="oe-val" type="number" step="0.01" min="0" wire:model="estimatedValue" class="rj-input tabular max-w-[240px]"></x-ui.field>
                     @else
-                        <div class="mt-3">
-                            <x-ui.field label="Advance / deposit amount" for="no-deposit" error="depositAmount">
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-ink_text-muted text-[14px] font-semibold pointer-events-none">₹</span>
-                                    <input id="no-deposit" type="number" step="0.01" min="0" wire:model="depositAmount" class="rj-input tabular pl-8">
-                                </div>
-                            </x-ui.field>
-                        </div>
-                        <div class="flex items-center gap-1.5 text-[12.5px] font-bold text-warning mt-3">
-                            <x-ui.icon name="clock" :size="13" /> Rate applies AT DELIVERY, not today.
-                        </div>
+                        <x-ui.field label="Advance paid (₹)" for="oe-dep" error="depositAmount" optional><input id="oe-dep" type="number" step="0.01" min="0" wire:model="depositAmount" class="rj-input tabular max-w-[240px]"></x-ui.field>
                     @endif
+                    <x-ui.button size="lg" icon="check" wire:click="submit" target="submit" class="w-full">Place order</x-ui.button>
                 </div>
+            </x-ui.card>
+        @endif
 
-                <x-ui.button type="submit" target="submit" icon="plus" class="w-full">Create Order</x-ui.button>
-            </form>
-        </x-ui.card>
-
-        <aside class="rounded-card bg-surface-sunken ring-1 ring-inset ring-line-light p-5">
-            <div class="flex items-center gap-2 text-[12.5px] font-semibold text-ink_text-secondary mb-2">
-                <x-ui.icon name="info" :size="14" /> The rate-lock rule
-            </div>
-            <p class="text-[12.5px] text-ink_text-secondary leading-relaxed">
-                If the customer pays the full value today, the metal rate is frozen to today's rate for this order. If they only leave a deposit, the rate that applies is whatever it is on the day the order is actually delivered — not today's rate.
-            </p>
-        </aside>
+        <div class="flex justify-between mt-5">
+            <x-ui.button variant="secondary" icon="arrow-left" wire:click="goToStep({{ max(1, $step - 1) }})" :disabled="$step === 1">Back</x-ui.button>
+            @if ($step < 3)<x-ui.button iconRight="arrow-right" wire:click="next" target="next">Continue</x-ui.button>@endif
+        </div>
     </div>
 </div>

@@ -12,11 +12,16 @@ class Movement extends Model
 
     protected $fillable = [
         'trackable_type', 'trackable_id', 'movement_type', 'purpose_label',
-        'user_id', 'counterparty', 'expected_return', 'actual_return',
+        'user_id', 'done_by_employee_id', 'location_id', 'counterparty', 'expected_return', 'actual_return',
         'weight_at_dispatch', 'weight_at_return', 'weight_loss', 'tagged_by',
         'photo_path', 'bill_path', 'note',
         'reverses_movement_id', 'approved_by',
     ];
+
+    public function doneBy()
+    {
+        return $this->belongsTo(\App\Models\Employee::class, 'done_by_employee_id');
+    }
 
     protected $casts = ['expected_return' => 'date', 'actual_return' => 'date'];
 
@@ -83,7 +88,7 @@ class Movement extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['trackable_type', 'trackable_id', 'movement_type', 'user_id', 'counterparty', 'reverses_movement_id'])
+            ->logOnly(['trackable_type', 'trackable_id', 'movement_type', 'user_id', 'done_by_employee_id', 'location_id', 'counterparty', 'reverses_movement_id'])
             ->useLogName('movement');
     }
 

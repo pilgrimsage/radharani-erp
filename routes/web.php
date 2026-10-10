@@ -20,11 +20,11 @@ require __DIR__.'/orders.php';
 require __DIR__.'/pricing.php';
 require __DIR__.'/sales.php';
 require __DIR__.'/purchases.php';
-// require __DIR__.'/accounting.php'; // hidden: accounting module removed (8 Oct change list, 14.1/18.1)
 require __DIR__.'/notifications.php';
-// require __DIR__.'/loyalty.php'; // hidden: Loyalty replaced by Referral (8 Oct change list, 15.1)
 require __DIR__.'/installments.php';
 require __DIR__.'/reports.php';
+require __DIR__.'/ledgers.php';
+require __DIR__.'/referral.php';
 require __DIR__.'/storefront.php';
 require __DIR__.'/website.php';
 require __DIR__.'/admin.php';

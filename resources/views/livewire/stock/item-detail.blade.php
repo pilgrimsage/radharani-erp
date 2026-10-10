@@ -30,6 +30,10 @@
         </x-slot:meta>
         <x-slot:actions>
             <x-ui.button variant="secondary" icon="package" wire:click="openMove">{{ $item->packet ? 'Move' : 'Put in packet' }}</x-ui.button>
+            @if (! $item->deletionBlocker())
+                <x-ui.button variant="danger-soft" icon="trash"
+                    x-on:click="$dispatch('rj-confirm', { title: 'Delete {{ $item->label }}?', message: 'The piece is hidden from stock but kept in the audit trail.', confirm: 'Delete', tone: 'danger', action: () => $wire.deleteItem() })">Delete</x-ui.button>
+            @endif
             <x-ui.button icon="edit" x-on:click="Livewire.dispatch('open-item-form', { id: {{ $item->id }} })">Edit piece</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -134,8 +138,11 @@
                             <div class="flex justify-between"><span class="text-ink_text-secondary">Stones</span><span class="tabular">₹{{ number_format($price['stone_value'], 2) }}</span></div>
                         @endif
                         @if ($price['huid_charge'])
-                            <div class="flex justify-between"><span class="text-ink_text-secondary">HUID charge</span><span class="tabular">₹{{ number_format($price['huid_charge'], 2) }}</span></div>
+                            <div class="flex justify-between"><span class="text-ink_text-secondary">Hallmarking charge</span><span class="tabular">₹{{ number_format($price['huid_charge'], 2) }}</span></div>
                         @endif
+                        @foreach ($price['additional_lines'] as $line)
+                            <div class="flex justify-between"><span class="text-ink_text-secondary">{{ $line['name'] }}</span><span class="tabular">₹{{ number_format($line['amount'], 2) }}</span></div>
+                        @endforeach
                         @if ($price['discount'] > 0)
                             <div class="flex justify-between text-success"><span>Discount ({{ $price['discount_rule']->scope }} rule)</span><span class="tabular">-₹{{ number_format($price['discount'], 2) }}</span></div>
                         @endif
@@ -185,6 +192,17 @@
     <livewire:stock.item-form />
 
     <x-ui.modal wire:model="showMove" title="Move {{ $item->label }}" icon="package" max-width="sm" submit="move" subtitle="The move is recorded in the piece's and both packets' history.">
+        <div class="mb-4">
+            <label for="im-scan" class="block text-[12.5px] font-semibold text-ink_text-primary mb-1.5">Scan the packet or box</label>
+            {{-- Not a <form>: this sits inside the modal's own form, where Enter would save the move. --}}
+            <div class="flex gap-2">
+                <input id="im-scan" x-ref="dscan" type="text" autocomplete="off" placeholder="PKT-1-2 or BOX-01" class="rj-input rj-code flex-1"
+                    x-on:keydown.enter.prevent="const v = $refs.dscan.value; $refs.dscan.value = ''; if (v.trim()) $wire.scanDestination(v)">
+                <x-ui.scan-button target="#im-scan" submit="enter" title="Scan the packet or box" variant="button" label="Camera" />
+            </div>
+            @if ($moveScanError)<p class="rj-error"><x-ui.icon name="alert-triangle" :size="12" />{{ $moveScanError }}</p>@endif
+            @if ($moveBox)<p class="rj-help">Showing packets in {{ $moveBox }}. <button type="button" class="text-gold-dark font-semibold" wire:click="$set('moveBox', null)">Show all</button></p>@endif
+        </div>
         <x-ui.field label="Packet" for="im-packet" error="moveToPacketId">
             <select id="im-packet" wire:model="moveToPacketId" autofocus class="rj-select">
                 <option value="">Not in a packet</option>

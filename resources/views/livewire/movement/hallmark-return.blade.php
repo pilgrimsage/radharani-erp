@@ -114,6 +114,8 @@
                             <x-movement.weight-fields :sent="$sentWeight" :diff="$scaleDiff" />
                         </section>
 
+                        <x-movement.done-by />
+
                         <x-ui.field label="Note" for="hr-note" error="note" optional>
                             <input id="hr-note" type="text" wire:model="note" maxlength="255" class="rj-input" placeholder="e.g. certificate number">
                         </x-ui.field>

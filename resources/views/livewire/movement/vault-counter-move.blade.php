@@ -1,45 +1,22 @@
 <div>
     @php $toCounter = $direction === 'to_counter'; @endphp
-    <x-ui.page-header title="Vault ↔ Counter" subtitle="Morning: scan what goes out to the counter. Evening: scan what is left and send it back. Confirm once when the tray is done."
+    <x-ui.page-header title="Vault ↔ Counter" subtitle="Scan what goes out to the counter, or what comes back. Several boxes at once is fine. Confirm once when the tray is done."
         :crumbs="[['label' => 'Movements'], ['label' => 'Vault ↔ Counter']]">
         <x-slot:meta>
             <x-ui.badge tone="gold">{{ now()->format('l, j M') }}</x-ui.badge>
         </x-slot:meta>
     </x-ui.page-header>
 
-    {{-- The two big buttons --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        @foreach ([
-            'to_counter' => ['arrow-right', 'Send to Counter', 'Morning. Stock leaving the vault for display.', $stats['sent'] . ' sent today'],
-            'to_vault' => ['archive', 'Return to Vault', 'Evening. Unsold stock going back in.', $stats['returned'] . ' returned today'],
-        ] as $key => [$icon, $title, $text, $count])
-            @php $active = $direction === $key; @endphp
-            <button type="button"
-                @if (! $active && count($tray))
+    {{-- Direction: one screen, one toggle --}}
+    <div class="rj-segment mb-6" role="group" aria-label="Direction">
+        @foreach (['to_counter' => ['Send to counter', $stats['sent'] . ' sent today'], 'to_vault' => ['Return to vault', $stats['returned'] . ' returned today']] as $key => [$title, $count])
+            <button type="button" @class(['is-active' => $direction === $key]) aria-pressed="{{ $direction === $key ? 'true' : 'false' }}"
+                @if ($direction !== $key && count($tray))
                     x-on:click="$dispatch('rj-confirm', { title: 'Switch and empty the tray?', message: 'The {{ count($tray) }} scanned {{ \Illuminate\Support\Str::plural('entry', count($tray)) }} have not been confirmed yet.', confirm: 'Switch', tone: 'danger', action: () => $wire.setDirection('{{ $key }}') })"
                 @else
                     wire:click="setDirection('{{ $key }}')"
-                @endif
-                @class([
-                    'press group relative text-left rounded-card p-5 sm:p-6 flex items-center gap-5 overflow-hidden transition-[border-color,box-shadow,background-color] duration-200',
-                    'bg-ink ink-grain text-white ring-1 ring-black/40 shadow-raised' => $active,
-                    'bg-white border border-line-light shadow-card hover:border-gold-soft hover:shadow-raised' => ! $active,
-                ])>
-                <span @class([
-                    'w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center',
-                    'gold-sheen text-ink shadow-gold' => $active,
-                    'bg-gold-tint text-gold-dark ring-1 ring-inset ring-gold-soft/70' => ! $active,
-                ])>
-                    <x-ui.icon :name="$icon" :size="24" />
-                </span>
-                <span class="flex-1 min-w-0">
-                    <span @class(['block font-display text-[28px] leading-tight font-semibold', 'text-gold-light' => $active, 'text-ink_text-primary' => ! $active])>{{ $title }}</span>
-                    <span @class(['block text-[13px] mt-0.5', 'text-ink-fg' => $active, 'text-ink_text-secondary' => ! $active])>{{ $text }}</span>
-                </span>
-                <span @class(['hidden md:block text-[12px] font-semibold tabular whitespace-nowrap', 'text-gold-light/80' => $active, 'text-ink_text-muted' => ! $active])>{{ $count }}</span>
-                @if ($active)
-                    <span class="absolute right-4 top-4 w-2 h-2 rounded-full bg-gold-light shadow-[0_0_0_4px_rgba(212,175,90,.18)]"></span>
-                @endif
+                @endif>
+                {{ $title }} <span class="ml-1.5 text-[11.5px] opacity-70 tabular">{{ $count }}</span>
             </button>
         @endforeach
     </div>
@@ -50,7 +27,7 @@
         <div class="space-y-6 min-w-0">
             {{-- Scanner --}}
             <x-ui.card :title="$toCounter ? 'Scan what is going to the counter' : 'Scan what is going back to the vault'"
-                subtitle="Pieces, packets or whole boxes. HUID, internal code or QR sticker." icon="scan">
+                subtitle="Pieces, packets or whole boxes. HUID, internal code or QR sticker. Paste or scan several codes at once." icon="scan">
                 <x-ui.scan-button target="#vault-scan" submit="form" continuous variant="button"
                     :title="$toCounter ? 'Scan for the counter' : 'Scan back to the vault'" label="Scan with camera"
                     class="w-full !h-14 !text-[15px] mb-3 sm:hidden" />
@@ -66,6 +43,17 @@
                         :title="$toCounter ? 'Scan for the counter' : 'Scan back to the vault'" label="Camera"
                         class="max-sm:!hidden !h-14 !px-5" />
                 </form>
+
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[640px]">
+                    @if ($toCounter)
+                        <x-ui.field label="Going to" for="vc-location" error="locationId" hint="Moving something already out to a different place records a place change.">
+                            <select id="vc-location" wire:model.live="locationId" class="rj-select">
+                                @foreach ($locations as $loc)<option value="{{ $loc->id }}">{{ $loc->name }}</option>@endforeach
+                            </select>
+                        </x-ui.field>
+                    @endif
+                    <x-movement.done-by />
+                </div>
 
                 @if ($feedback)
                     <div wire:key="fb-{{ md5(json_encode($feedback) . count($tray)) }}" @class([
@@ -105,6 +93,7 @@
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span class="rj-code text-ink_text-primary">{{ $t['code'] }}</span>
                                         @if ($t['warning'])<x-ui.badge tone="warning" size="sm">{{ $t['warning'] }}</x-ui.badge>@endif
+                                        @if (! empty($t['placeChange']))<x-ui.badge tone="info" size="sm">Place change</x-ui.badge>@endif
                                     </div>
                                     <div class="text-[12.5px] text-ink_text-muted truncate">{{ $t['detail'] }}</div>
                                 </div>
@@ -127,7 +116,7 @@
                                 : '$wire.confirmMove()';
                         @endphp
                         <x-ui.button size="lg" class="ml-auto" :icon="$toCounter ? 'arrow-right' : 'archive'" target="confirmMove" x-on:click="{{ $confirmJs }}">
-                            {{ $toCounter ? 'Send ' . count($tray) . ' to Counter' : 'Return ' . count($tray) . ' to Vault' }}
+                            {{ $toCounter ? 'Send ' . count($tray) . ' to ' . ($locations->firstWhere('id', $locationId)->name ?? 'Counter') : 'Return ' . count($tray) . ' to Vault' }}
                         </x-ui.button>
                     </div>
                 @else
@@ -138,8 +127,15 @@
         </div>
 
         {{-- Right: what is on the counter now --}}
-        <x-ui.card :padding="false" :title="$toCounter ? 'On the counter now' : 'Still on the counter'"
-            :subtitle="$expectedCount . ' ' . \Illuminate\Support\Str::plural('entry', $expectedCount) . ' expected back tonight'" icon="grid" class="xl:sticky xl:top-24">
+        <x-ui.card :padding="false" title="STILL ON COUNTER"
+            :subtitle="$boxesOut . ' ' . \Illuminate\Support\Str::plural('box', $boxesOut) . ' out · ' . $expectedCount . ' ' . \Illuminate\Support\Str::plural('entry', $expectedCount) . ' in all'" icon="grid" class="xl:sticky xl:top-24">
+            @if ($byUser->isNotEmpty())
+                <div class="flex flex-wrap gap-1.5 px-5 py-3 border-b border-line-light">
+                    @foreach ($byUser as $name => $n)
+                        <x-ui.badge tone="neutral" size="sm">{{ $name ?: 'Unknown' }} · {{ $n }}</x-ui.badge>
+                    @endforeach
+                </div>
+            @endif
             @if (! $toCounter && $expectedCount)
                 <div class="px-5 py-3.5 border-b border-line-light">
                     @php $done = $expectedCount - $missingCount; @endphp
@@ -154,7 +150,7 @@
             @endif
             <ul class="divide-y divide-line-light max-h-[560px] overflow-y-auto">
                 @forelse ($counterRows->sortBy('scanned') as $r)
-                    <li class="flex items-center gap-3 px-5 py-3 {{ $r['sold'] ? 'opacity-60' : '' }}">
+                    <li wire:key="counter-{{ $r['type'] }}-{{ $r['model']?->id }}" class="flex items-center gap-3 px-5 py-3 {{ $r['sold'] ? 'opacity-60' : '' }}">
                         @if (! $toCounter && ! $r['sold'])
                             <span @class([
                                 'w-6 h-6 shrink-0 rounded-full flex items-center justify-center',
@@ -170,7 +166,10 @@
                             @else
                                 <span class="rj-code">{{ $r['code'] }}</span>
                             @endif
-                            <div class="text-[12px] text-ink_text-muted truncate">{{ $r['detail'] }}</div>
+                            <div class="text-[12px] text-ink_text-muted truncate">{{ $r['place'] ? $r['place'] . ' · ' : '' }}{{ $r['detail'] }}{{ $r['by'] ? ' · ' . $r['by'] : '' }}</div>
+                            @if ($r['soldInside'])
+                                <x-ui.badge tone="warning" size="sm" class="mt-1">{{ $r['soldInside'] }} sold inside</x-ui.badge>
+                            @endif
                         </div>
                         @if ($r['sold'])
                             <x-ui.badge size="sm">Sold</x-ui.badge>
@@ -179,6 +178,7 @@
                                 {{ $r['since']->isToday() ? $r['since']->format('g:i a') : $r['since']->format('j M') }}
                                 @unless ($r['since']->isToday())<br><span class="text-warning font-semibold">not today</span>@endunless
                             </span>
+                            <x-ui.button size="xs" variant="secondary" icon="archive" wire:click="returnNow('{{ $r['type'] }}', {{ $r['model']?->id }})" target="returnNow" title="Return to the vault now">Return</x-ui.button>
                         @endif
                     </li>
                 @empty
@@ -188,28 +188,20 @@
         </x-ui.card>
     </div>
 
-    {{-- Today's log --}}
-    <x-ui.card :padding="false" title="Today's log" :subtitle="$today->count() . ' ' . \Illuminate\Support\Str::plural('movement', $today->count()) . ' between the vault and the counter'" icon="history" class="mt-6">
+    {{-- Today's log: out and in side by side --}}
+    <x-ui.card :padding="false" title="Today's log" :subtitle="$pairs->count() . ' ' . \Illuminate\Support\Str::plural('entry', $pairs->count()) . ' between the vault and the counter'" icon="history" class="mt-6">
         <x-slot:actions>
             @if (\Illuminate\Support\Facades\Route::has('movements.log'))
                 <x-ui.button variant="ghost" size="sm" iconRight="arrow-right" :href="route('movements.log', ['type' => 'vault'])">Full log</x-ui.button>
             @endif
         </x-slot:actions>
-        @if ($today->isEmpty())
+        @if ($pairs->isEmpty())
             <x-ui.empty-state icon="clock" title="No movements yet today" message="Confirmed trays show up here with who moved what, and when." compact />
         @else
             <div class="overflow-x-auto">
-                <x-ui.table :headers="['Time', 'Direction', 'What', 'By']">
-                    @foreach ($today as $row)
-                        <tr wire:key="today-{{ $row['movement']->id }}">
-                            <td class="tabular whitespace-nowrap text-ink_text-secondary">{{ $row['movement']->created_at->format('g:i a') }}</td>
-                            <td>
-                                @if ($row['movement']->movement_type === 'vault_out')
-                                    <x-ui.badge tone="gold" size="sm"><x-ui.icon name="arrow-right" :size="11" /> To counter</x-ui.badge>
-                                @else
-                                    <x-ui.badge tone="dark" size="sm"><x-ui.icon name="archive" :size="11" /> To vault</x-ui.badge>
-                                @endif
-                            </td>
+                <x-ui.table :headers="['What', 'Out of vault', 'Back in vault']">
+                    @foreach ($pairs as $row)
+                        <tr wire:key="pair-{{ $row['key'] }}">
                             <td>
                                 @if ($row['url'])
                                     <a href="{{ $row['url'] }}" class="rj-code text-ink_text-primary hover:text-gold-dark">{{ $row['code'] }}</a>
@@ -218,7 +210,12 @@
                                 @endif
                                 <span class="text-[12.5px] text-ink_text-muted ml-2">{{ $row['detail'] }}</span>
                             </td>
-                            <td class="whitespace-nowrap">{{ $row['movement']->user->name ?? '-' }}</td>
+                            <td class="whitespace-nowrap tabular">
+                                @if ($row['out']) {{ $row['out']->created_at->format('g:i a') }} <span class="text-ink_text-muted">· {{ $row['out']->user->name ?? '-' }}</span> @else <span class="text-ink_text-muted">-</span> @endif
+                            </td>
+                            <td class="whitespace-nowrap tabular">
+                                @if ($row['in']) {{ $row['in']->created_at->format('g:i a') }} <span class="text-ink_text-muted">· {{ $row['in']->user->name ?? '-' }}</span> @else <span class="text-ink_text-muted">-</span> @endif
+                            </td>
                         </tr>
                     @endforeach
                 </x-ui.table>

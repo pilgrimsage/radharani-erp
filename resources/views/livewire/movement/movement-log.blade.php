@@ -108,7 +108,7 @@
                     @endif
                 </td>
                 <td class="whitespace-nowrap text-[13px]">
-                    {{ $m->user?->name ?? '-' }}
+                    {{ $m->user?->name ?? '-' }}@if ($m->doneBy) <span class="block text-[11.5px] text-ink_text-muted">done by {{ $m->doneBy->name }}</span>@endif
                     @if ($m->photo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($m->photo_path))
                         <a href="{{ asset('storage/' . $m->photo_path) }}" target="_blank" class="ml-1 inline-flex align-middle text-ink_text-muted hover:text-gold-dark" title="Photo"><x-ui.icon name="image" :size="14" /></a>
                     @elseif ($m->photo_path)

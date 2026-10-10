@@ -175,7 +175,7 @@
     '<div class="price">' +
     '<div class="price__row"><b data-price>' +
     inr(pr.total) +
-    "</b><small>incl. making and GST</small></div>" +
+    "</b><small>incl. making charges</small></div>" +
     "<small>Worked out at today's " +
     esc(pur.metal) +
     " rate of " +
@@ -301,11 +301,6 @@
     '<tr class="sub"><td>Subtotal</td><td>' +
     inr(pr.sub) +
     "</td></tr>" +
-    "<tr><td>GST (" +
-    pr.gstPct +
-    "%)</td><td>" +
-    inr(pr.gst) +
-    "</td></tr>" +
     '<tr class="total"><td>Total</td><td>' +
     inr(pr.total) +
     "</td></tr>" +
@@ -322,7 +317,7 @@
     "</div></div></div>" +
     /* SAMPLE POLICY TEXT: confirm the exact exchange and buyback terms with the store before launch */
     '<div class="acc"><button class="acc__btn" aria-expanded="false">Exchange and buyback <i class="ph ph-plus"></i></button><div class="acc__panel"><div class="acc__inner">' +
-    "<p>Gold bought from us can be exchanged against a new piece at the day's rate, with the purity tested in front of you. Making charges and GST are not refunded.</p>" +
+    "<p>Gold bought from us can be exchanged against a new piece at the day's rate, with the purity tested in front of you. Making charges are not refunded.</p>" +
     '<p><a class="link" href="' + RJ.urls.home + '#exchange">How old gold exchange works <i class="ph ph-arrow-right"></i></a></p>' +
     "</div></div></div>" +
     "</div>" +

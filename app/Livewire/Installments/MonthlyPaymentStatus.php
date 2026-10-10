@@ -16,17 +16,7 @@ class MonthlyPaymentStatus extends Component
     {
         $scheme = InstallmentScheme::with('customer')->findOrFail($schemeId);
 
-        PendingNotification::create([
-            'customer_id' => $scheme->customer_id,
-            'type' => 'installment_reminder',
-            'recipient_name' => $scheme->customer->name ?? null,
-            'recipient_phone' => $scheme->customer->phone ?? null,
-            'message' => "Your monthly instalment of ₹" . number_format($scheme->monthly_amount, 2) . ' is due.',
-            'status' => 'pending',
-            'related_type' => 'installment_scheme',
-            'related_id' => $scheme->id,
-            'created_by' => auth()->id(),
-        ]);
+        \App\Support\MessageTemplates::queue('installment_reminder', $scheme->customer, \App\Support\MessageTemplates::schemeReminder($scheme), 'installment_scheme', $scheme->id);
 
         $this->dispatch('toast', message: "Reminder queued for {$scheme->customer->name}'s ".now()->format('F Y').' instalment.', type: 'success');
     }
@@ -51,6 +41,10 @@ class MonthlyPaymentStatus extends Component
         ]);
 
         $scheme->increment('months_paid');
+        $scheme->refresh();
+        if ($scheme->is_matured) {
+            $this->dispatch('toast', message: "{$scheme->customer->name}'s scheme has matured. Choose what happens next in Scheme List.", type: 'info');
+        }
         $this->dispatch('toast', message: "Marked {$scheme->customer->name}'s installment as paid for ".now()->format('F Y').'.', type: 'success');
     }
 

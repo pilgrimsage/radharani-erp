@@ -29,7 +29,7 @@
 
         <x-slot:head>
             <x-ui.th field="created" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Date & time</x-ui.th>
-            <x-ui.th field="metal" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Metal</x-ui.th>
+            <x-ui.th field="metal" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Metal and carat</x-ui.th>
             <x-ui.th field="rate" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()" align="right">Rate (₹/g)</x-ui.th>
             <x-ui.th field="source" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Source</x-ui.th>
             <x-ui.th>By</x-ui.th>
@@ -38,7 +38,7 @@
         @forelse ($rates as $r)
             <tr wire:key="rate-{{ $r->id }}">
                 <td class="text-ink_text-primary whitespace-nowrap">{{ $r->created_at->format('d M Y, g:i a') }}</td>
-                <td><x-ui.badge :tone="$r->metal === 'gold' ? 'gold' : 'neutral'">{{ strtoupper($r->metal) }}</x-ui.badge></td>
+                <td><x-ui.badge :tone="$r->metal === 'gold' ? 'gold' : 'neutral'">{{ strtoupper($r->metal) }}{{ $r->purity ? ' ' . $r->purity : '' }}</x-ui.badge></td>
                 <td class="text-right tabular text-ink_text-primary">₹{{ number_format($r->rate, 2) }}</td>
                 <td class="text-ink_text-primary capitalize">{{ $r->source }}</td>
                 <td class="text-ink_text-secondary">{{ $r->updater->name ?? '—' }}</td>

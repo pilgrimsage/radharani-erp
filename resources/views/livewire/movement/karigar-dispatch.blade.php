@@ -7,11 +7,10 @@
     </x-ui.page-header>
 
     {{-- Which situation --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         @foreach ([
             'tagged' => ['gem', 'A finished piece for repair', 'A tagged piece from stock. The same piece comes back.'],
             'customer_material' => ['user', "A customer's own gold", 'Brought in by a customer for repair. Never part of shop stock.'],
-            'raw_material' => ['flame', 'Raw material for a new piece', 'Metal handed over by weight. A new piece comes back.'],
         ] as $key => [$icon, $title, $text])
             @php $active = $situation === $key; @endphp
             <button type="button" wire:click="setSituation('{{ $key }}')"
@@ -167,6 +166,8 @@
                             </div>
                         </x-ui.field>
                     </div>
+
+                    <x-movement.done-by />
 
                     <x-ui.field label="Note" for="kd-note" error="note" optional>
                         <input id="kd-note" type="text" wire:model="note" maxlength="255" class="rj-input" placeholder="Anything the next person should know">

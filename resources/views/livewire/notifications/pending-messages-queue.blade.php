@@ -15,6 +15,12 @@
                     <button type="button" wire:click="$set('statusFilter', '{{ $value }}')" class="{{ $statusFilter === $value ? 'is-active' : '' }}">{{ $label }}</button>
                 @endforeach
             </div>
+            <div class="rj-segment">
+                <button type="button" wire:click="$set('groupFilter', '')" class="{{ $groupFilter === '' ? 'is-active' : '' }}">Everything</button>
+                @foreach (array_keys(\App\Support\MessageTemplates::GROUPS) as $g)
+                    <button type="button" wire:click="$set('groupFilter', '{{ $g }}')" class="{{ $groupFilter === $g ? 'is-active' : '' }}">{{ $g }}</button>
+                @endforeach
+            </div>
             @if ($this->hasNonDefaultFilters())
                 <x-ui.button variant="ghost" size="sm" icon="x" wire:click="resetFilters">Clear</x-ui.button>
             @endif
@@ -32,7 +38,7 @@
 
         @forelse ($messages as $m)
             <tr wire:key="msg-{{ $m->id }}" x-data="{ copied: false }">
-                <td><x-ui.badge tone="neutral" size="sm">{{ \Illuminate\Support\Str::headline($m->type) }}</x-ui.badge></td>
+                <td><x-ui.badge tone="neutral" size="sm">{{ \App\Support\MessageTemplates::groupOf($m->type) }} · {{ \App\Support\MessageTemplates::label($m->type) }}</x-ui.badge></td>
                 <td class="text-ink_text-primary">{{ $m->customer->name ?? $m->recipient_name ?? '—' }}</td>
                 <td class="text-ink_text-secondary">{{ $m->customer->phone ?? $m->recipient_phone ?? '—' }}</td>
                 <td class="text-ink_text-primary max-w-[320px] truncate" title="{{ $m->message }}">{{ $m->message }}</td>

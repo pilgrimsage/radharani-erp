@@ -14,7 +14,7 @@
 
     <x-ui.datatable :paginator="$items">
         <x-slot:toolbar>
-            <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Search name, HUID, code, category" class="w-full sm:w-[300px]" scan />
+            <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Name, HUID, code, category, packet or box" class="w-full sm:w-[300px]" scan />
             <div class="rj-segment">
                 @foreach (['' => 'All', 'live' => 'Live', 'waiting' => 'Ticked, not showing', 'off' => 'Off the site'] as $k => $v)
                     <button type="button" wire:click="$set('state', '{{ $k }}')" @class(['is-active' => $state === $k])>{{ $v }}</button>

@@ -2,7 +2,7 @@
     'items',
     'results',
     'label' => 'Pieces',
-    'placeholder' => 'Scan a tag, or type a HUID, code or category',
+    'placeholder' => 'Scan a tag, packet or box, or type a code or category',
     'empty' => 'Nothing picked yet. Scan tags one after another and each one lands here.',
 ])
 {{-- Scan-or-search basket for components using App\Livewire\Movement\Concerns\PicksItems. --}}

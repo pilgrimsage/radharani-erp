@@ -11,6 +11,7 @@ class RefineryBatchSend extends Component
 {
     use WithFileUploads, WithDataTable;
 
+    public string $metal = 'gold';
     public float $weight = 0;
     public $photo = null;
 
@@ -32,6 +33,7 @@ class RefineryBatchSend extends Component
     public function submit()
     {
         $this->validate([
+            'metal' => 'required|in:gold,silver,platinum,titanium',
             'weight' => 'required|numeric|min:0.001',
             'photo' => 'required|image|max:5120',
         ]);
@@ -39,6 +41,7 @@ class RefineryBatchSend extends Component
         $path = app(PhotoCompressionService::class)->store($this->photo, 'refinery');
 
         $batch = RefineryBatch::create([
+            'metal' => $this->metal,
             'weight' => $this->weight,
             'photo_path' => $path,
             'status' => 'sent',

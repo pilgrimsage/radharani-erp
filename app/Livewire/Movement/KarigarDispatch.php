@@ -23,7 +23,7 @@ use Livewire\Component;
  */
 class KarigarDispatch extends Component
 {
-    use PicksItems;
+    use PicksItems, \App\Livewire\Movement\Concerns\HasDoneBy;
 
     public const METALS = ['gold' => 'Gold', 'silver' => 'Silver', 'platinum' => 'Platinum', 'titanium' => 'Titanium'];
     public const WORK = ['Repair', 'Polish', 'Resize', 'Stone setting', 'Rhodium', 'Soldering'];
@@ -60,7 +60,8 @@ class KarigarDispatch extends Component
 
     public function setSituation(string $situation): void
     {
-        if (! in_array($situation, ['tagged', 'customer_material', 'raw_material'], true)) {
+        // Raw material is issued as a batch on the main Karigar screen now.
+        if (! in_array($situation, ['tagged', 'customer_material'], true)) {
             return;
         }
         $this->situation = $situation;
@@ -119,6 +120,7 @@ class KarigarDispatch extends Component
         DB::transaction(function () use ($items, $vendor) {
             foreach ($items as $item) {
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => 'item',
                     'trackable_id' => $item->id,
                     'movement_type' => 'karigar_out',

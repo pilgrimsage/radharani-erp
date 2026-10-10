@@ -96,11 +96,7 @@ class ItemManager extends Component
             ->leftJoin('packets', 'packets.id', '=', 'items.packet_id')
             ->leftJoin('boxes', 'boxes.id', '=', 'packets.box_id')
             ->addSelect('packets.code as packet_code', 'boxes.code as box_code', 'packets.box_id as box_id')
-            ->when($this->search, fn ($q) => $q->where(fn ($q) => $q
-                ->where('items.huid_code', 'like', "%{$this->search}%")
-                ->orWhere('items.internal_code', 'like', "%{$this->search}%")
-                ->orWhere('items.category', 'like', "%{$this->search}%")
-                ->orWhere('items.description', 'like', "%{$this->search}%")))
+            ->when($this->search, fn ($q) => $q->searchAnything($this->search))
             ->when($this->categoryFilter, fn ($q) => $q->where('items.category', $this->categoryFilter))
             ->when($this->metalFilter, fn ($q) => $q->where('items.metal', $this->metalFilter))
             ->when($this->statusFilter, fn ($q) => $q->where('items.status', $this->statusFilter))

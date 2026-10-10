@@ -12,7 +12,7 @@ class OrderDetail extends Component
 
     public function mount(Order $order)
     {
-        $this->order = $order->load('customer', 'stockItem', 'convertedSale', 'creator');
+        $this->order = $order->load('customer', 'stockItem', 'convertedSale', 'creator', 'images', 'karigarBatches', 'hallmarkBatches');
     }
 
     public function confirm()
@@ -26,17 +26,7 @@ class OrderDetail extends Component
         $this->order->update(['status' => 'ready']);
         $this->order->refresh();
 
-        PendingNotification::create([
-            'customer_id' => $this->order->customer_id,
-            'type' => 'order_ready',
-            'recipient_name' => $this->order->customer?->name,
-            'recipient_phone' => $this->order->customer?->phone,
-            'message' => "Your {$this->order->product_description} order is ready for pickup.",
-            'status' => 'pending',
-            'related_type' => 'order',
-            'related_id' => $this->order->id,
-            'created_by' => auth()->id(),
-        ]);
+        \App\Support\MessageTemplates::queue('order_ready', $this->order->customer, \App\Support\MessageTemplates::orderReady($this->order), 'order', $this->order->id);
     }
 
     public function deliver()

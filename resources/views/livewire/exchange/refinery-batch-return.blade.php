@@ -38,15 +38,22 @@
                 <x-ui.field label="Refined weight" for="rr-weight" error="refinedWeight">
                     <div class="rj-input-icon">
                         <x-ui.icon name="scale" :size="16" />
-                        <input id="rr-weight" type="number" step="0.001" min="0" wire:model="refinedWeight" class="rj-input tabular">
+                        <input id="rr-weight" type="number" step="0.001" min="0" wire:model.live.debounce.300ms="refinedWeight" class="rj-input tabular">
                     </div>
                 </x-ui.field>
                 <x-ui.field label="Refined purity" for="rr-purity" error="refinedPurity">
                     <div class="rj-input-icon">
                         <x-ui.icon name="percent" :size="16" />
-                        <input id="rr-purity" type="number" step="0.01" min="0" max="100" wire:model="refinedPurity" class="rj-input tabular">
+                        <input id="rr-purity" type="number" step="0.01" min="0" max="100" wire:model.live.debounce.300ms="refinedPurity" class="rj-input tabular">
                     </div>
                 </x-ui.field>
+                @if ($calc['result'] > 0)
+                    <dl class="rj-dl bg-surface-sunken ring-1 ring-inset ring-line-light rounded-xl px-4 !py-3.5">
+                        <div><dt>Pure metal</dt><dd class="tabular">{{ number_format($calc['fine'], 3) }} g</dd></div>
+                        <div><dt>Deduction</dt><dd class="tabular">{{ number_format($calc['percent'], 2) }}%</dd></div>
+                        <div class="col-span-2 pt-2 mt-1 border-t border-line-light"><dt class="font-bold text-ink_text-primary">Resulting weight</dt><dd class="font-display text-[22px] font-semibold tabular">{{ number_format($calc['result'], 3) }} g</dd></div>
+                    </dl>
+                @endif
                 <x-ui.button type="submit" target="submit" icon="check" class="w-full" :disabled="! $batchId">Confirm Return</x-ui.button>
             </form>
         </x-ui.card>

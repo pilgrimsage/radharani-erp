@@ -8,30 +8,32 @@ $pendingReview = \App\Models\Stock\Item::where('status', 'pending_review')->coun
 $pendingSales = \App\Models\Sales\Sale::where('confirmed_by_accountant', false)->count();
 $pendingMessages = \App\Models\Notification\PendingNotification::where('status', 'pending')->count();
 
-// Hidden for now (8 Oct change list, section 18): Accounting, Loyalty, Vendors. Routes are switched off in routes/web.php and routes/admin.php.
 // Single source for the whole navigation. 'can' is a permission (or list, any-of) gate.
 $nav = [
     ['type' => 'link', 'route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],
     ['key' => 'stock', 'label' => 'Stock', 'icon' => 'gem', 'can' => 'stock.manage', 'items' => [
         ['route' => 'stock.items', 'label' => 'Inventory'],
-        ['route' => 'stock.boxes', 'label' => 'Boxes'],
-        ['route' => 'stock.packets', 'label' => 'Packets'],
+        ['route' => 'stock.summary', 'label' => 'Product View'],
+        ['route' => 'stock.audit', 'label' => 'Stock Audit', 'can' => 'stock.audit'],
+        ['route' => 'stock.unassigned', 'label' => 'Unassigned Items'],
+        ['route' => 'stock.boxes', 'label' => 'Boxes & Packets'],
+        ['route' => 'stock.categories', 'label' => 'Categories', 'can' => 'category.manage'],
         ['route' => 'stock.assign', 'label' => 'Change Item location'],
         ['route' => 'stock.qr-codes', 'label' => 'QR Codes'],
         ['route' => 'stock.import', 'label' => 'Bulk Import'],
+        ['route' => 'stock.huid', 'label' => 'HUID Export / Update'],
         ['route' => 'stock.configurator', 'label' => 'Configurator'],
     ]],
     ['key' => 'movements', 'label' => 'Movements', 'icon' => 'repeat', 'items' => [
         ['route' => 'movements.vault-counter', 'label' => 'Vault ↔ Counter'],
-        ['route' => 'movements.karigar-dispatch', 'label' => 'Karigar Dispatch'],
-        ['route' => 'movements.karigar-return', 'label' => 'Karigar Return'],
-        ['route' => 'movements.hallmark-dispatch', 'label' => 'Hallmarking Dispatch'],
-        ['route' => 'movements.hallmark-return', 'label' => 'Hallmarking Return'],
+        ['route' => 'movements.karigar', 'label' => 'Karigar'],
+        ['route' => 'movements.hallmark', 'label' => 'Hallmarking'],
         ['route' => 'movements.custom-purpose', 'label' => 'Photo / Custom Purpose'],
         ['route' => 'movements.pending-review', 'label' => 'Pending Review', 'badge' => $pendingReview, 'can' => 'movement.approve'],
         ['route' => 'movements.log', 'label' => 'Movement Log'],
     ]],
     ['key' => 'exchange', 'label' => 'Exchange & Refinery', 'icon' => 'flame', 'can' => 'exchange.manage', 'items' => [
+        ['route' => 'exchange.list', 'label' => 'Exchanges'],
         ['route' => 'exchange.new', 'label' => 'New Exchange'],
         ['route' => 'exchange.tracker', 'label' => 'Status Tracker'],
         ['route' => 'exchange.valuation', 'label' => 'Final Valuation'],
@@ -45,10 +47,9 @@ $nav = [
     ]],
     ['key' => 'pricing', 'label' => 'Pricing & Rates', 'icon' => 'trending-up', 'items' => [
         ['route' => 'pricing.rates', 'label' => 'Daily Rate Entry', 'can' => 'rate.update'],
+        ['route' => 'pricing.simulator', 'label' => 'Price Simulator', 'can' => 'rate.update'],
         ['route' => 'pricing.rates.history', 'label' => 'Rate History', 'can' => 'rate.update'],
-        ['route' => 'pricing.making-charges', 'label' => 'Making Charges', 'can' => 'rate.update'],
-        ['route' => 'pricing.discounts', 'label' => 'Discount Rules', 'can' => 'discount.manage'],
-        ['route' => 'pricing.additional-charges', 'label' => 'Additional Charges', 'can' => 'rate.update'],
+        ['route' => 'pricing.rules', 'label' => 'Pricing Rules', 'can' => 'rate.update'],
     ]],
     ['key' => 'sales', 'label' => 'Sales & Billing', 'icon' => 'receipt', 'items' => [
         ['route' => 'sales.new', 'label' => 'New Sale'],
@@ -60,6 +61,7 @@ $nav = [
         ['route' => 'purchases.list', 'label' => 'Purchase List'],
     ]],
     ['type' => 'link', 'route' => 'notifications.queue', 'label' => 'Messages', 'icon' => 'bell', 'badge' => $pendingMessages],
+    ['type' => 'link', 'route' => 'referral', 'label' => 'Referral', 'icon' => 'gift', 'can' => 'referral.manage'],
     ['key' => 'installments', 'label' => 'Installments', 'icon' => 'calendar', 'can' => 'customer.manage', 'items' => [
         ['route' => 'installments.enrol', 'label' => 'Scheme Enrolment'],
         ['route' => 'installments.monthly-status', 'label' => 'Monthly Status'],
@@ -67,7 +69,7 @@ $nav = [
     ]],
     ['key' => 'website', 'label' => 'Website', 'icon' => 'globe', 'can' => 'website.manage', 'items' => [
         ['route' => 'website.listings', 'label' => 'Listings'],
-        ['route' => 'website.categories', 'label' => 'Categories'],
+        // Website categories now come from Stock > Categories (8 Oct change list, 5.2).
         ['route' => 'website.collections', 'label' => 'Collections'],
         ['route' => 'website.settings', 'label' => 'Settings'],
     ]],
@@ -75,13 +77,15 @@ $nav = [
         ['route' => 'reports.logbook', 'label' => 'Daily Logbook'],
         ['route' => 'reports.staff-activity', 'label' => 'Staff Activity'],
         ['route' => 'reports.location', 'label' => 'Location Report'],
+        ['route' => 'ledgers.index', 'label' => 'Ledgers', 'can' => 'movement.create'],
     ]],
     ['key' => 'admin', 'label' => 'Administration', 'icon' => 'shield-check', 'items' => [
         ['route' => 'admin.customers', 'label' => 'Customers', 'can' => 'customer.manage'],
         ['route' => 'admin.employees', 'label' => 'Employees', 'can' => 'employee.manage'],
         ['route' => 'admin.users', 'label' => 'Users', 'can' => 'user.manage'],
+        ['route' => 'admin.parties', 'label' => 'Karigars & Centres', 'can' => 'purchase.manage'],
+        ['route' => 'admin.locations', 'label' => 'Locations', 'can' => 'location.manage'],
         ['route' => 'admin.roles', 'label' => 'Roles & Permissions', 'can' => 'role.manage'],
-        ['route' => 'admin.referrals', 'label' => 'Referrals', 'can' => 'referral.manage'],
         ['route' => 'admin.audit-log', 'label' => 'Audit Log', 'can' => 'audit.view'],
     ]],
 ];

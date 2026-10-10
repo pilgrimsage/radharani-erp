@@ -51,6 +51,19 @@
                 <x-ui.field label="Start date" for="se-start" error="startDate">
                     <input id="se-start" type="date" wire:model="startDate" class="rj-input w-full">
                 </x-ui.field>
+                <x-ui.field label="Months in the scheme" for="se-months" error="totalMonths" hint="The completion date is the start date plus these months.">
+                    <input id="se-months" type="number" min="1" max="60" wire:model="totalMonths" class="rj-input tabular">
+                </x-ui.field>
+            </div>
+
+            <div class="rounded-xl ring-1 ring-inset ring-line-light p-4 mb-5">
+                <label class="flex items-center gap-2.5 text-[13.5px] font-semibold"><input type="checkbox" wire:model.live="existingMember" class="rj-checkbox"> Already a member</label>
+                @if ($existingMember)
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <x-ui.field label="Months already paid" for="se-paid" error="monthsAlreadyPaid"><input id="se-paid" type="number" min="0" wire:model="monthsAlreadyPaid" class="rj-input tabular"></x-ui.field>
+                        <x-ui.field label="Amount still pending (₹)" for="se-pending" error="amountPending"><input id="se-pending" type="number" step="0.01" min="0" wire:model="amountPending" class="rj-input tabular"></x-ui.field>
+                    </div>
+                @endif
             </div>
 
             <x-ui.button type="button" wire:click="enrol" target="enrol" variant="primary" icon="check">Enrol</x-ui.button>

@@ -1,19 +1,18 @@
 <?php
 namespace App\Livewire\Portal;
 
-use App\Models\Customer\LoyaltySetting;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
  * Customer portal: My account. Read-only view of the signed-in customer's
- * own purchases, loyalty points, instalment schemes and referrals, inside
+ * own purchases, instalment schemes and referrals, inside
  * the public website's layout.
  */
 class CustomerDashboard extends Component
 {
-    public const TABS = ['purchases', 'loyalty', 'installments', 'referrals'];
+    public const TABS = ['purchases', 'installments', 'referrals'];
 
     #[Url(as: 'tab', except: 'purchases')]
     public string $tab = 'purchases';
@@ -43,17 +42,17 @@ class CustomerDashboard extends Component
         $customer = Auth::guard('customer')->user()->load([
             'sales' => fn ($q) => $q->orderByDesc('created_at'),
             'sales.items.images',
-            'loyaltyTransactions' => fn ($q) => $q->orderByDesc('created_at')->orderByDesc('id'),
             'installmentSchemes' => fn ($q) => $q->orderByDesc('start_date'),
             'installmentSchemes.payments' => fn ($q) => $q->orderBy('paid_on'),
-            'referrals' => fn ($q) => $q->withCount('sales'),
         ]);
 
         $saleInvoices = $customer->sales->pluck('invoice_number', 'id');
 
         return view('livewire.portal.customer-dashboard', [
             'customer' => $customer,
-            'loyalty' => LoyaltySetting::current(),
+            // People who bought with this customer's code, and the referral points earned (8 Oct change list, 15.1).
+            'referredBuyers' => \App\Models\Sales\Sale::where('referral_customer_id', $customer->id)->where('confirmed_by_accountant', true)->with('customer:id,name')->get()->groupBy('customer_id'),
+            'referralPoints' => (int) \App\Models\Customer\ReferralPoint::where('customer_id', $customer->id)->sum('points'),
             'saleInvoices' => $saleInvoices,
             'firstName' => strtok(trim($customer->name), ' ') ?: $customer->name,
         ])->layout('components.layouts.portal', ['title' => 'My account | Radharani Jewellery Works']);

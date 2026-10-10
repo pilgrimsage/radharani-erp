@@ -9,7 +9,7 @@
     <div class="mt-8 space-y-3">
         @foreach ([
             [route('login'), 'shield-check', 'I work at the shop', 'Stock, movements, billing and reports', true],
-            [route('portal.login'), 'user', "I'm a customer", 'Your invoices, loyalty points and instalments', false],
+            [route('portal.login'), 'user', "I'm a customer", 'Your purchases, referrals and instalments', false],
         ] as [$href, $icon, $title, $sub, $primary])
             <a href="{{ $href }}"
                class="group press flex items-center gap-4 p-5 rounded-2xl border transition-[border-color,box-shadow,background-color]

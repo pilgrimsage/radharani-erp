@@ -20,9 +20,9 @@ class BulkImport extends Component
 
     public const FIELDS = [
         'huid_code' => ['HUID', false, ['huid', 'hallmark', 'huid code', 'huid no']],
-        'category' => ['Category', true, ['category', 'product', 'ornament', 'item type']],
+        'category' => ['Category', false, ['category', 'product', 'ornament', 'item type']],
         'metal' => ['Metal', false, ['metal', 'material']],
-        'purity' => ['Purity', true, ['purity', 'karat', 'carat', 'kt', 'fineness', 'touch']],
+        'purity' => ['Purity', false, ['purity', 'karat', 'carat', 'kt', 'fineness', 'touch']],
         'weight' => ['Weight (g)', true, ['weight', 'wt', 'gross', 'net wt', 'grams', 'gm']],
         'description' => ['Description', false, ['description', 'desc', 'details', 'name', 'remarks']],
         'hsn_code' => ['HSN code', false, ['hsn']],
@@ -45,6 +45,7 @@ class BulkImport extends Component
     public string $defaultMakingType = 'flat_per_piece';
     public $defaultMakingValue = 0;
     public ?int $defaultPacketId = null;
+    public int $templateCount = 10;
 
     // Step 3
     public array $reviewRows = [];
@@ -99,6 +100,21 @@ class BulkImport extends Component
         }
     }
 
+    // Blank sheet in the government HUID website's layout, for a chosen number of pieces.
+    public function downloadBlankTemplate()
+    {
+        $n = max(1, min(500, $this->templateCount));
+
+        return response()->streamDownload(function () use ($n) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['S No.', 'Item Category', 'No Of Unit', 'HUID', 'Weight of Article (Gms)', 'Purity']);
+            for ($i = 1; $i <= $n; $i++) {
+                fputcsv($out, [$i, 'Mix Ornaments', 1, '', '', '']);
+            }
+            fclose($out);
+        }, "huid-import-{$n}-rows.csv", ['Content-Type' => 'text/csv']);
+    }
+
     public function downloadTemplate()
     {
         return response()->streamDownload(function () {
@@ -121,7 +137,8 @@ class BulkImport extends Component
             $this->addError('mapping', 'Each system field can only be matched to one column. "' . self::FIELDS[reset($dupes)][0] . '" is used twice.');
             return;
         }
-        foreach (['category', 'purity', 'weight'] as $required) {
+        // Partial rows are fine (government HUID files have few columns): only weight is needed now.
+        foreach (['weight'] as $required) {
             if (! in_array($required, $mapped, true)) {
                 $this->addError('mapping', 'Match a column to "' . self::FIELDS[$required][0] . '". It is required for every piece.');
                 return;
@@ -152,7 +169,7 @@ class BulkImport extends Component
 
             $data = [
                 'huid_code' => strtoupper($get('huid_code')) ?: null,
-                'category' => ucwords(strtolower($get('category'))),
+                'category' => ucwords(strtolower($get('category'))) ?: 'Uncategorised',
                 'metal' => $this->parseMetal($get('metal')),
                 'purity' => $get('purity'),
                 'weight' => str_replace([',', 'g', 'G', ' '], '', $get('weight')),
@@ -164,15 +181,14 @@ class BulkImport extends Component
             ];
 
             $errors = [];
-            if ($data['category'] === '') $errors[] = 'Category missing';
-            if ($data['purity'] === '') $errors[] = 'Purity missing';
             if (! is_numeric($data['weight']) || (float) $data['weight'] <= 0) $errors[] = 'Weight is not a number';
             if (! $data['metal']) $errors[] = 'Unknown metal "' . $get('metal') . '"';
             if (! $data['making_type']) $errors[] = 'Unknown making type "' . $get('making_type') . '"';
             if (! is_numeric($data['making_value'])) $errors[] = 'Making value is not a number';
             if (mb_strlen((string) $data['description']) > 100) $errors[] = 'Description over 100 characters';
 
-            $packetId = $this->defaultPacketId;
+            // A blank packet is genuinely unassigned: never fall back to a packet nobody chose.
+            $packetId = $this->defaultPacketId ?: null;
             if ($data['packet_code'] !== '') {
                 $packetId = $packets[$data['packet_code']] ?? null;
                 if (! $packetId) $errors[] = 'Packet ' . $data['packet_code'] . ' not found';
@@ -268,6 +284,8 @@ class BulkImport extends Component
 
         $this->createdIds = DB::transaction(function () use ($rows) {
             $ids = [];
+            // One batch per upload, identified by the time of the entry.
+            $batch = \App\Models\Stock\EntryBatch::create(['kind' => 'import', 'note' => $this->fileName ?? null, 'user_id' => \Illuminate\Support\Facades\Auth::id()]);
             foreach ($rows as $row) {
                 $d = $row['data'];
                 $item = Item::create([
@@ -276,6 +294,8 @@ class BulkImport extends Component
                     'internal_code' => $d['huid_code'] ? null : Item::generateInternalCode(),
                     'metal' => $d['metal'],
                     'category' => $d['category'],
+                    // Matched to the owner's category tree; a new name is added under that metal for the owner to tidy.
+                    'category_id' => \App\Models\Stock\ItemCategory::firstOrCreate(['metal' => $d['metal'], 'name' => $d['category']])->id,
                     'purity' => $d['purity'],
                     'weight' => (float) $d['weight'],
                     'description' => $d['description'],
@@ -284,6 +304,7 @@ class BulkImport extends Component
                     'making_value' => (float) $d['making_value'],
                     'packet_id' => $row['packet_id'],
                     'status' => 'in_stock',
+                    'entry_batch_id' => $batch->id,
                 ]);
                 $ids[] = $item->id;
             }

@@ -2,6 +2,30 @@
 
 Single source of truth for every table as it currently stands (53 migrations). This supersedes the table-by-table sections scattered across earlier design docs — if anything conflicts, this file wins. See `docs/REQUIREMENTS.md` for the confirmed business rules each new table/column exists to satisfy.
 
+## Update, 8 October 2026 (read this first)
+
+The tables below are the baseline; the 8 October change list changed them as follows. Where the two disagree, this section wins.
+
+**Removed:** `accounts`, `transactions`, `loyalty_transactions`, `loyalty_settings`, `invoice_counters`, `gst_rates`, `discount_rules`, `making_charge_presets`, `additional_charge_presets`. Columns removed: `customers.loyalty_points`; `sales.cgst/sgst/igst/payment_modes`; `purchases.vendor_id/total_amount/gst/payment_status`; `purchase_items.rate`; `vendors.balance`. `vendors.type` is now only `karigar` or `hallmark_center`. Permissions `ledger.view`, `ledger.manage` and `discount.manage` are gone.
+
+**New tables:**
+- `locations` (name, type vault/counter/display/other, sort_order, is_active); `movements.location_id` (where a `vault_out` went), `movements.done_by_employee_id` (who physically did it; `user_id` stays the logged-in actor).
+- `item_categories` (metal, name, sort_order, is_active; unique per metal+name); `items.category_id`, `items.entry_batch_id`, `items.source_hallmark_batch_id`; soft deletes (`deleted_at`) on `boxes`, `packets`, `items`.
+- `entry_batches` (kind, note, user_id): one per import, identified by its time.
+- `stock_audits` + `stock_audit_lines` (present/missing/extra per scanned piece).
+- `karigar_raw_batches` is now the karigar **batch** table: `description`, `categories` (json), `pieces_expected`, `advance_cash`, `advance_metal_weight/purity`, `order_id`, `photo_path`, `closed_by/closed_at/close_note`, status adds `closed`. `karigar_receipts` (part returns: pieces, weight_received, weight_loss, disposition stock/hallmark, `hallmark_batch_id`), `karigar_payments` (cash or metal), `raw_metal_entries` (the raw-metal balance by metal and carat; + in, - out).
+- `hallmark_batches`, `hallmark_batch_items` (tagged pieces in a batch), `hallmark_receipts` (part returns with `tagged_by`).
+- `rate_logs.purity` (a rate per metal and carat); `pricing_rules` (kind making/additional/discount/hallmark; scope product/category/price_range/metal/all; carat; metal-value band; calc percentage/per_gram/per_piece; validity).
+- `sale_payments` (insert-only parts of a bill; the balance is worked out); `sales.adjustment_type/adjustment_value`, `sales.referral_customer_id`, `sales.order_override_note`; `sales.invoice_number` holds the Tally bill number once verified.
+- `orders.sourcing` (stock, karigar, bought_finished, bought_unhallmarked, bought_unfinished), `order_images`; `purchases.notes`, `purchases.order_id` (raw material only).
+- `exchange_deduction_presets` (metal, carat, percent); `exchange_transactions.metal` (edits logged, locked once settled); `refinery_batches.metal/deduction_percent/result_weight`.
+- `referral_settings` (points per gram, first-sale bonus), `referral_points` (ledger); `customers.referral_opted_at` (codes are opt-in).
+- `installment_schemes.total_months/opening_pending_amount/maturity_outcome/outcome_ref/outcome_at`.
+- `pending_notifications.type` gains scheme_welcome, scheme_default, scheme_completed, order_accepted, order_from_karigar, order_to_hallmarking.
+- Permissions added: `location.manage`, `category.manage`, `stock.audit`; `loyalty.manage` is now `referral.manage`.
+
+---
+
 ## ER Diagrams
 
 **Diagram 1 — Operational core:** Stock hierarchy (Boxes → Packets → Items), Movements, Sales, Purchases, Users/Employees

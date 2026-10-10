@@ -7,7 +7,7 @@ use Livewire\Component;
 
 /**
  * Customer Detail (staff-facing) — combined view: purchase history,
- * current custom orders, exchange balance, loyalty points, instalment
+ * current custom orders, exchange balance, instalment
  * scheme status.
  */
 class CustomerDetail extends Component
@@ -28,9 +28,9 @@ class CustomerDetail extends Component
     public function render()
     {
         return view('livewire.admin.customer-detail', [
-            'sales' => $this->customer->sales()->with('items')->orderByDesc('id')->get(),
+            'sales' => $this->customer->sales()->with('items')->withSum('payments', 'amount')->orderByDesc('id')->get(),
+            'ledger' => $this->tab === 'ledger' ? app(\App\Services\LedgerService::class)->forCustomer($this->customer) : null,
             'orders' => Order::where('customer_id', $this->customer->id)->orderByDesc('id')->get(),
-            'loyaltyTransactions' => $this->customer->loyaltyTransactions()->orderByDesc('created_at')->get(),
             'installmentSchemes' => $this->customer->installmentSchemes()->with('payments')->get(),
         ])->layout('components.layouts.app', ['title' => $this->customer->name.' — Radharani Jewellery']);
     }

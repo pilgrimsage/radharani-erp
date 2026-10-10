@@ -6,7 +6,7 @@
                 <x-slot:trigger>
                     <x-ui.button variant="secondary" iconRight="chevron-down">Tools</x-ui.button>
                 </x-slot:trigger>
-                <x-ui.dropdown-item icon="scan" :href="route('stock.assign')">Assign to packets</x-ui.dropdown-item>
+                <x-ui.dropdown-item icon="scan" :href="route('stock.assign')">Change item location</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="qr-code" :href="route('stock.qr-codes')">QR code generator</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="upload" :href="route('stock.import')">Bulk import</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="layers" :href="route('stock.configurator')">Configurator</x-ui.dropdown-item>
@@ -42,7 +42,7 @@
     @php $pageIds = $items->pluck('id')->map(fn ($id) => (string) $id)->all(); @endphp
     <x-ui.datatable :paginator="$items">
         <x-slot:toolbar>
-            <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category or description" class="w-full lg:w-[300px]" />
+            <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category, packet or box" class="w-full lg:w-[300px]" />
             <select wire:model.live="categoryFilter" class="rj-select w-auto min-w-[150px]" aria-label="Category">
                 <option value="">All categories</option>
                 @foreach ($categories as $c)

@@ -32,7 +32,7 @@
         @php $pageIds = $items->pluck('id')->map(fn ($id) => (string) $id)->all(); @endphp
         <x-ui.datatable :paginator="$items">
             <x-slot:toolbar>
-                <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category" class="w-full sm:w-[260px]" />
+                <x-ui.search-input scan wire:model.live.debounce.300ms="search" placeholder="HUID, code, category, packet or box" class="w-full sm:w-[260px]" />
                 <select wire:model.live="source" class="rj-select w-auto min-w-[190px]" aria-label="Came back from">
                     <option value="">Everything</option>
                     <option value="karigar">Back from karigar</option>

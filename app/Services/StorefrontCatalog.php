@@ -2,8 +2,8 @@
 namespace App\Services;
 
 use App\Models\Movement\RateLog;
-use App\Models\Pricing\GstRate;
 use App\Models\Stock\Item;
+use App\Models\Stock\ItemCategory;
 use App\Models\Storefront\StorefrontCategory;
 use App\Models\Storefront\StorefrontCollection;
 use App\Models\Storefront\StorefrontSetting;
@@ -14,8 +14,8 @@ use Illuminate\Support\Collection;
  * Builds window.RJ_DATA for the public storefront: the exact shape the
  * site's scripts (public/storefront/js) were designed around, filled from
  * the ERP. Prices are never stored or computed in the browser: each piece
- * carries its live PricingService breakdown plus GST at its category's
- * rate (the same GST rule Sales > New Sale applies).
+ * carries its live PricingService breakdown. No GST is added (8 Oct change
+ * list, 5.2). Categories come from the owner's Metal > Subcategory tree.
  */
 class StorefrontCatalog
 {
@@ -45,6 +45,7 @@ class StorefrontCatalog
             'purities' => $this->purities($pieces),
             'metals' => $pieces->pluck('metal')->unique()->values(),
             'categories' => $this->categories()->filter(fn ($c) => $categoryCounts->has($c['slug']))->values(),
+            'menu' => $this->menu($categoryCounts),
             'collections' => $this->collections()->filter(fn ($c) => $collectionCounts->has($c['slug']))->values(),
             'budgets' => collect(config('storefront.budgets'))->map(fn ($b) => [
                 'slug' => $b['slug'], 'label' => $b['label'], 'min' => $b['min'], 'max' => $b['max'],
@@ -64,30 +65,29 @@ class StorefrontCatalog
             return $this->pieces;
         }
 
-        $categories = StorefrontCategory::lookup();
-        $gst = GstRate::pluck('rate_percent', 'category')->mapWithKeys(fn ($r, $c) => [mb_strtolower($c) => (float) $r]);
         $newSince = now()->subDays((int) config('storefront.new_days', 30));
 
         return $this->pieces = Item::onWebsite()
-            ->with(['images', 'storefrontCollection'])
+            ->with(['images', 'storefrontCollection', 'categoryRow'])
             ->orderByDesc('listed_at')->orderByDesc('id')
             ->get()
-            ->map(function (Item $item) use ($categories, $gst, $newSince) {
-                $category = $categories[mb_strtolower(trim($item->category))] ?? null;
-                if (! $category) {
-                    return null; // its stock category isn't on the website yet
+            ->map(function (Item $item) use ($newSince) {
+                $category = $item->categoryRow;
+                if (! $category || ! $category->is_active) {
+                    return null; // its subcategory is missing or switched off
                 }
 
-                return $this->piece($item, $category, $gst[mb_strtolower($item->category)] ?? 3.0, $newSince);
+                return $this->piece($item, $category, $newSince);
             })
             ->filter()
+            // A metal whose rate is set to 0 is not shown on the display.
+            ->filter(fn ($p) => ($p['pr']['rate'] ?? 0) > 0)
             ->values();
     }
 
-    private function piece(Item $item, StorefrontCategory $category, float $gstPct, Carbon $newSince): array
+    private function piece(Item $item, ItemCategory $category, Carbon $newSince): array
     {
         $b = $this->pricing->breakdown($item);
-        $gst = round($b['total'] * $gstPct / 100, 2);
         $collection = $item->storefrontCollection?->is_active ? $item->storefrontCollection : null;
 
         return [
@@ -113,7 +113,7 @@ class StorefrontCatalog
             'dims' => $item->dimensions,
             'description' => $item->web_description ?: (string) $item->description,
             'listedAt' => $item->listed_at?->timestamp ?? 0,
-            'price' => round($b['total'] + $gst),
+            'price' => round($b['total']),
             'pr' => [
                 'rate' => $b['rate'],
                 'weight' => $b['weight'],
@@ -124,9 +124,7 @@ class StorefrontCatalog
                 'huid' => $b['huid_charge'],
                 'discount' => $b['discount'],
                 'sub' => $b['total'],
-                'gstPct' => $gstPct,
-                'gst' => $gst,
-                'total' => round($b['total'] + $gst, 2),
+                'total' => round($b['total'], 2),
             ],
         ];
     }
@@ -142,15 +140,40 @@ class StorefrontCatalog
         };
     }
 
+    // Website categories are the subcategories in the owner's tree. A website category row
+    // with the same name (Website > Categories) can still supply a picture and a line of text.
     public function categories(): Collection
     {
-        return StorefrontCategory::active()->get()->map(fn ($c) => [
-            'slug' => $c->slug,
-            'name' => $c->name,
-            'img' => $c->image_url,
-            'blurb' => $c->blurb,
-            'inMenu' => $c->in_menu,
-        ]);
+        $extras = StorefrontCategory::active()->get()->keyBy(fn ($c) => mb_strtolower($c->name));
+        $cats = ItemCategory::active()->orderBy('sort_order')->orderBy('name')->get();
+        $dupes = $cats->countBy(fn ($c) => mb_strtolower($c->name));
+
+        return $cats->map(function (ItemCategory $c) use ($extras, $dupes) {
+            $x = $extras->get(mb_strtolower($c->name));
+            // Same name under two metals: tell them apart ("Gold Earrings", "Silver Earrings").
+            $name = $dupes[mb_strtolower($c->name)] > 1 ? ItemCategory::METALS[$c->metal] . ' ' . $c->name : $c->name;
+
+            return [
+                'slug' => $c->slug,
+                'name' => $name,
+                'metal' => $c->metal,
+                'img' => $x?->image_url,
+                'blurb' => $x?->blurb,
+                'inMenu' => (bool) $x?->in_menu,
+            ];
+        });
+    }
+
+    // Site menu: metals at the top, their subcategories beneath (only ones with live pieces).
+    private function menu(Collection $categoryCounts): Collection
+    {
+        return $this->categories()->filter(fn ($c) => $categoryCounts->has($c['slug']))
+            ->groupBy('metal')
+            ->map(fn ($rows, $metal) => [
+                'metal' => $metal,
+                'label' => ItemCategory::METALS[$metal] ?? ucfirst($metal),
+                'items' => $rows->map(fn ($c) => ['slug' => $c['slug'], 'name' => str_replace((ItemCategory::METALS[$metal] ?? '') . ' ', '', $c['name'])])->values(),
+            ])->sortBy(fn ($m) => array_search($m['metal'], array_keys(ItemCategory::METALS)))->values();
     }
 
     public function collections(): Collection

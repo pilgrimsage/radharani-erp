@@ -52,8 +52,8 @@
                 <img src="https://images.unsplash.com/photo-1774437778651-b711670f3192?auto=format&fit=crop&w=900&q=78" alt="">
             </figure>
             <ul class="pt-perks">
-                <li><i class="ph ph-receipt"></i><div><b>Every invoice</b><span>What you bought, and what it weighed</span></div></li>
-                <li><i class="ph ph-star"></i><div><b>Loyalty points</b><span>Your balance and where it came from</span></div></li>
+                <li><i class="ph ph-receipt"></i><div><b>Every purchase</b><span>What you bought, and what it weighed</span></div></li>
+                <li><i class="ph ph-gift"></i><div><b>Referrals</b><span>Your code and who bought with it</span></div></li>
                 <li><i class="ph ph-calendar-check"></i><div><b>Monthly scheme</b><span>Each instalment you've paid</span></div></li>
             </ul>
         </aside>

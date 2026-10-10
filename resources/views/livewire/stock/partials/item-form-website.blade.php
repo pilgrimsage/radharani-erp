@@ -22,8 +22,7 @@
         @if ($show_on_website && $category && ! $webCategory)
             <div class="flex items-start gap-2.5 mt-3 px-3.5 py-2.5 rounded-control bg-warning-bg text-[12.5px] text-ink_text-primary">
                 <x-ui.icon name="alert-triangle" :size="14" class="shrink-0 mt-0.5 text-warning" />
-                <span>No website category includes “{{ $category }}” yet, so this piece won't show.
-                    @can('website.manage')<a href="{{ route('website.categories') }}" target="_blank" class="font-semibold text-gold-dark hover:underline">Add it in Website › Categories</a>.@endcan</span>
+                <span>“{{ $category }}” is switched off in Stock › Categories, so this piece won't show.</span>
             </div>
         @elseif ($webCategory)
             <p class="mt-2.5 text-[12.5px] text-ink_text-secondary flex items-center gap-1.5">

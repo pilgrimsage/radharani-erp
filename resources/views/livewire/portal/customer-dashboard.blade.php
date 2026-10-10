@@ -7,16 +7,12 @@
     $confirmedTotal = $sales->where('confirmed_by_accountant', true)->sum('total');
     $activeSchemes = $customer->installmentSchemes->where('status', 'active');
     $paidIntoSchemes = $customer->installmentSchemes->flatMap->payments->sum('amount');
-    $pointValue = (float) $loyalty->point_value_in_rupees;
-    $points = (int) $customer->loyalty_points;
-    $reasonLabels = ['purchase' => 'Points earned on a purchase', 'referral' => 'Referral bonus', 'redemption' => 'Points redeemed'];
     $phone = preg_replace('/^(\d{5})(\d{5})$/', '$1 $2', (string) $customer->phone);
     $shareText = "Shop at Radharani Jewellery Works with my referral code {$customer->referral_code}.";
     $tabs = [
         'purchases' => ['Purchases', $sales->count()],
-        'loyalty' => ['Loyalty points', null],
         'installments' => ['Monthly scheme', $customer->installmentSchemes->count() ?: null],
-        'referrals' => ['Referrals', $customer->referrals->count() ?: null],
+        'referrals' => ['Referrals', $referredBuyers->count() ?: null],
     ];
 @endphp
 <div>
@@ -42,12 +38,6 @@
         </div>
 
         <div class="pt-stats">
-            <button type="button" class="pt-stat" wire:click="setTab('loyalty')">
-                <span class="pt-stat__icon"><i class="ph ph-star"></i></span>
-                <small>Loyalty points</small>
-                <b>{{ number_format($points) }}</b>
-                <span>{{ $pointValue > 0 && $points > 0 ? 'Worth '.$inr($points * $pointValue).' at the counter' : 'Earn them on every purchase' }}</span>
-            </button>
             <button type="button" class="pt-stat" wire:click="setTab('purchases')">
                 <span class="pt-stat__icon"><i class="ph ph-receipt"></i></span>
                 <small>Purchases</small>
@@ -98,12 +88,13 @@
         @forelse ($sales as $sale)
             @php
                 $pending = ! $sale->confirmed_by_accountant;
-                $gst = (float) $sale->cgst + (float) $sale->sgst + (float) $sale->igst;
+                $paidIn = (float) $sale->payments()->sum('amount');
+                $balance = (float) $sale->total - $paidIn;
             @endphp
             <article class="pt-card pt-invoice" wire:key="sale-{{ $sale->id }}">
                 <header class="pt-invoice__head">
                     <div>
-                        <small>{{ $pending ? 'Being confirmed' : 'Invoice' }}</small>
+                        <small>{{ $pending ? 'Being confirmed' : 'Bill' }}</small>
                         <h3>{{ $pending ? 'Purchase on '.$sale->created_at?->format('j M Y') : $sale->invoice_number }}</h3>
                         <span class="pt-invoice__date">{{ $sale->created_at?->format('l, j F Y') }} &middot; {{ $sale->items->count() }} {{ Str::plural('piece', $sale->items->count()) }}</span>
                     </div>
@@ -135,12 +126,12 @@
                 </ul>
 
                 <dl class="pt-sum">
-                    @if ($gst > 0)<div><dt>GST</dt><dd>{{ $inr($gst) }}</dd></div>@endif
                     @if ((float) $sale->discount > 0)<div><dt>Discount</dt><dd>&minus;{{ $inr($sale->discount) }}</dd></div>@endif
                     <div class="pt-sum__total"><dt>Total</dt><dd>{{ $inr($sale->total) }}</dd></div>
+                    @if ($balance > 0.005)<div><dt>Still to pay</dt><dd>{{ $inr($balance) }}</dd></div>@endif
                 </dl>
                 @if ($pending)
-                    <p class="pt-note"><i class="ph ph-info"></i>The shop confirms every sale before issuing the final invoice number. This usually happens the same day.</p>
+                    <p class="pt-note"><i class="ph ph-info"></i>The shop confirms every sale before the bill is final. This usually happens the same day.</p>
                 @endif
             </article>
         @empty
@@ -151,37 +142,6 @@
                 <a href="{{ route('storefront.catalog') }}" class="btn btn--solid">Browse jewellery</a>
             </div>
         @endforelse
-    @endif
-
-    {{-- ============ Loyalty ============ --}}
-    @if ($tab === 'loyalty')
-        <div class="pt-split">
-            <div class="pt-card pt-balance">
-                <span class="eyebrow">Your balance</span>
-                <b class="pt-balance__num">{{ number_format($points) }}</b>
-                <span class="pt-balance__unit">points</span>
-                @if ($pointValue > 0 && $points > 0)
-                    <p>Worth <strong>{{ $inr($points * $pointValue) }}</strong> off your next purchase.</p>
-                @endif
-                <p class="pt-muted">Redeem them at the counter when you buy.@if ((int) $loyalty->min_redeemable_points > 0) You can redeem once you have {{ number_format($loyalty->min_redeemable_points) }} points.@endif</p>
-            </div>
-
-            <div class="pt-card pt-ledger">
-                <h3 class="pt-card__title">Points history</h3>
-                @forelse ($customer->loyaltyTransactions as $tx)
-                    <div class="pt-ledger__row" wire:key="tx-{{ $tx->id }}">
-                        <span @class(['pt-ledger__icon', 'is-minus' => $tx->points < 0])><i class="ph {{ $tx->points < 0 ? 'ph-arrow-down-right' : 'ph-arrow-up-right' }}"></i></span>
-                        <div class="pt-ledger__txt">
-                            <b>{{ $reasonLabels[$tx->reason] ?? ucfirst($tx->reason) }}</b>
-                            <span>{{ $tx->created_at?->format('j M Y') }}@if ($tx->related_sale_id && ($inv = $saleInvoices[$tx->related_sale_id] ?? null) && ! str_starts_with($inv, 'RESV-')) &middot; {{ $inv }}@endif</span>
-                        </div>
-                        <span @class(['pt-ledger__pts', 'is-minus' => $tx->points < 0])>{{ $tx->points > 0 ? '+' : '' }}{{ number_format($tx->points) }}</span>
-                    </div>
-                @empty
-                    <p class="pt-muted">No points yet. You earn them on purchases and when friends you refer buy from us.</p>
-                @endforelse
-            </div>
-        </div>
     @endif
 
     {{-- ============ Monthly scheme ============ --}}
@@ -238,7 +198,7 @@
                 <span class="eyebrow">Refer a friend</span>
                 @if ($customer->referral_code)
                     <b class="pt-refer__code">{{ $customer->referral_code }}</b>
-                    <p>Share your code. When a friend makes their first purchase with it, you get <strong>{{ number_format($loyalty->referral_bonus_points) }} bonus points</strong>.</p>
+                    <p>Share your code. When a friend buys from us with it, you earn referral points.@if ($referralPoints > 0) You have <strong>{{ number_format($referralPoints) }} points</strong> so far.@endif</p>
                     <div class="pt-refer__actions">
                         <a class="btn btn--solid" href="https://wa.me/?text={{ rawurlencode($shareText) }}" target="_blank" rel="noopener"><i class="ph ph-whatsapp-logo"></i>Share on WhatsApp</a>
                         <button type="button" class="btn btn--ghost" x-on:click="navigator.clipboard && navigator.clipboard.writeText('{{ $customer->referral_code }}').then(() => { copied = true; setTimeout(() => copied = false, 1800) })">
@@ -246,25 +206,24 @@
                         </button>
                     </div>
                 @else
-                    <p>You don't have a referral code yet. Ask at the counter and we'll add one to your account.</p>
+                    <p>Referral codes are for customers who ask for one. Ask at the counter and we will add one to your account.</p>
                 @endif
             </div>
 
             <div class="pt-card pt-ledger">
                 <h3 class="pt-card__title">People you've referred</h3>
-                @forelse ($customer->referrals as $friend)
-                    <div class="pt-ledger__row" wire:key="ref-{{ $friend->id }}">
+                @forelse ($referredBuyers as $buys)
+                    @php $friend = $buys->first()->customer; @endphp
+                    <div class="pt-ledger__row" wire:key="ref-{{ $friend?->id }}">
                         <span class="pt-ledger__icon"><i class="ph ph-user"></i></span>
                         <div class="pt-ledger__txt">
-                            <b>{{ $friend->name }}</b>
-                            <span>Joined {{ $friend->created_at?->format('j M Y') }}</span>
+                            <b>{{ $friend?->name }}</b>
+                            <span>{{ $buys->count() }} {{ \Illuminate\Support\Str::plural('purchase', $buys->count()) }} with your code</span>
                         </div>
-                        <span @class(['pt-pill', 'pt-pill--ok' => $friend->sales_count > 0, 'pt-pill--wait' => ! $friend->sales_count])>
-                            {{ $friend->sales_count > 0 ? 'Bonus earned' : 'No purchase yet' }}
-                        </span>
+                        <span class="pt-pill pt-pill--ok">Thank you</span>
                     </div>
                 @empty
-                    <p class="pt-muted">No one yet. Friends who use your code show up here.</p>
+                    <p class="pt-muted">No one yet. Friends who buy with your code show up here.</p>
                 @endforelse
             </div>
         </div>

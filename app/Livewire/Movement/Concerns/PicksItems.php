@@ -25,6 +25,13 @@ trait PicksItems
         $this->resetErrorBag('pickSearch');
         $item = StockLookup::item($raw);
 
+        // A whole box or packet (8 Oct change list, 8.1): every piece in it that can go is added.
+        if (! $item && ($found = StockLookup::container($raw))) {
+            $this->addContainer($found['type'], $found['model']);
+
+            return;
+        }
+
         if (! $item) {
             $hits = $this->pickResults();
             if ($hits->count() !== 1) {
@@ -37,6 +44,26 @@ trait PicksItems
         }
 
         $this->addToBasket($item->id);
+    }
+
+    protected function addContainer(string $type, $model): void
+    {
+        $items = $type === 'packet'
+            ? Item::where('packet_id', $model->id)
+            : Item::whereIn('packet_id', $model->packets()->select('id'));
+        $items = $items->whereIn('status', $this->pickableStatuses())->pluck('id')->all();
+
+        if (! $items) {
+            $this->addError('pickSearch', "{$model->code} has no pieces that can go right now.");
+
+            return;
+        }
+
+        $before = count($this->basket);
+        $this->basket = array_values(array_unique(array_merge($this->basket, $items)));
+        $this->pickSearch = '';
+        $this->dispatch('toast', message: (count($this->basket) - $before) . " pieces from {$model->code} added.", type: 'info');
+        $this->dispatch('picker-ready');
     }
 
     public function addToBasket(int $id): void

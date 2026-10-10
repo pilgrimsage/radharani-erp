@@ -25,6 +25,8 @@ use Livewire\Component;
  */
 class KarigarReturn extends Component
 {
+    use \App\Livewire\Movement\Concerns\HasDoneBy;
+
     #[Url(except: 'pieces')]
     public string $tab = 'pieces'; // pieces | customer | raw
 
@@ -57,7 +59,7 @@ class KarigarReturn extends Component
 
     public function setTab(string $tab): void
     {
-        if (in_array($tab, ['pieces', 'customer', 'raw'], true)) {
+        if (in_array($tab, ['pieces', 'customer'], true)) { // raw batches are received on the main Karigar screen
             $this->tab = $tab;
             $this->reset(['search', 'selectedId']);
             $this->resetForm();
@@ -158,6 +160,7 @@ class KarigarReturn extends Component
 
         DB::transaction(function () use ($out, $item) {
             Movement::create([
+                ...$this->doneByAttributes(),
                 'trackable_type' => 'item',
                 'trackable_id' => $item->id,
                 'movement_type' => 'karigar_in',
@@ -265,6 +268,7 @@ class KarigarReturn extends Component
 
             // The new piece's history starts with where it came from.
             Movement::create([
+                ...$this->doneByAttributes(),
                 'trackable_type' => 'item',
                 'trackable_id' => $item->id,
                 'movement_type' => 'karigar_in',
@@ -305,6 +309,7 @@ class KarigarReturn extends Component
 
         $centre = Vendor::find($this->centreId);
         Movement::create([
+                ...$this->doneByAttributes(),
             'trackable_type' => 'item',
             'trackable_id' => $item->id,
             'movement_type' => 'hallmark_out',

@@ -62,8 +62,7 @@ class StorefrontController extends Controller
         $weight = 10;
         $value = round($rate * $weight);
         $making = round($value * 0.12);
-        $gst = round(($value + $making) * 0.03);
 
-        return compact('rate', 'weight', 'value', 'making', 'gst') + ['total' => $value + $making + $gst];
+        return compact('rate', 'weight', 'value', 'making') + ['total' => $value + $making];
     }
 }

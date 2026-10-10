@@ -88,6 +88,7 @@ prefix and normalised by `App\Support\Phone`.
 | `<x-ui.status :status>` | The **only** way to render `items.status`, so labels/colours stay consistent |
 | `<x-ui.stat-card icon label value hint href>` | KPI tile |
 | `<x-ui.empty-state icon title message compact>` | Empty lists; put the next action in the slot |
+| `<x-ui.stepper :steps :current go-to reach>` | Guided-form progress: numbered steps plus a progress bar. Clicking a step calls the component's `go-to` method (default `goToStep`), so earlier steps can be reopened. Used by Exchange; Sales next |
 | `<x-ui.timeline :events>` | Renders `StockHistoryService` events (Item/Packet/Box Detail) |
 | `<x-ui.password-input>` | Password field with show/hide toggle (auth pages) |
 | `<x-ui.icon name size>` | Lucide paths kept in one file. Add new names there; never inline raw `<svg>` in pages |

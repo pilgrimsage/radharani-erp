@@ -3,6 +3,10 @@
         :crumbs="[['label' => 'Stock', 'href' => route('stock.items')], ['label' => 'Boxes', 'href' => route('stock.boxes')], ['label' => $box->code]]">
         <x-slot:meta>
             <x-ui.badge tone="gold" size="lg"><x-ui.icon name="archive" :size="13" /> Box</x-ui.badge>
+            @php $lastAudit = $box->audits()->latest('id')->first(); @endphp
+            <x-ui.badge size="lg" :tone="$lastAudit ? ($lastAudit->clean ? 'success' : 'warning') : 'neutral'">
+                {{ $lastAudit ? 'Last audited ' . $lastAudit->created_at->format('j M Y') . ($lastAudit->clean ? '' : ' (differences)') : 'Never audited' }}
+            </x-ui.badge>
         </x-slot:meta>
         <x-slot:actions>
             <x-ui.button variant="secondary" icon="edit" wire:click="openEdit">Edit</x-ui.button>

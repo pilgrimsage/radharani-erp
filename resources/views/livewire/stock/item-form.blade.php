@@ -50,12 +50,11 @@
                         </x-ui.field>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <x-ui.field label="Category" for="f-category" error="category" hint="Necklace, Ring, Bangle...">
-                                <input id="f-category" type="text" list="category-options" wire:model.blur="category" autofocus
-                                    class="rj-input @error('category') is-invalid @enderror" autocomplete="off">
-                                <datalist id="category-options">
-                                    @foreach ($categories as $c)<option value="{{ $c }}"></option>@endforeach
-                                </datalist>
+                            <x-ui.field label="Subcategory" for="f-category" error="categoryId" hint="Under {{ \App\Livewire\Stock\ItemForm::METALS[$metal] ?? 'this metal' }}. The owner manages the list in Stock > Categories.">
+                                <select id="f-category" wire:model.live="categoryId" autofocus class="rj-select @error('categoryId') is-invalid @enderror">
+                                    <option value="">Choose...</option>
+                                    @foreach ($categories as $c)<option value="{{ $c->id }}">{{ $c->name }}</option>@endforeach
+                                </select>
                             </x-ui.field>
                             <x-ui.field label="Purity" for="f-purity" error="purity">
                                 <input id="f-purity" type="text" wire:model.live.debounce.400ms="purity" class="rj-input @error('purity') is-invalid @enderror" autocomplete="off"

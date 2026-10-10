@@ -20,7 +20,7 @@ use Livewire\WithFileUploads;
  */
 class CustomPurposeMove extends Component
 {
-    use PicksItems;
+    use PicksItems, \App\Livewire\Movement\Concerns\HasDoneBy;
     use WithFileUploads;
 
     // Reason => which movement pair it is recorded under.
@@ -119,6 +119,7 @@ class CustomPurposeMove extends Component
         DB::transaction(function () use ($items, $type, $label, $photoPath) {
             foreach ($items as $item) {
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => 'item',
                     'trackable_id' => $item->id,
                     'movement_type' => $type,
@@ -157,6 +158,7 @@ class CustomPurposeMove extends Component
         DB::transaction(function () use ($open, $photoPath) {
             foreach ($open as $out) {
                 Movement::create([
+                ...$this->doneByAttributes(),
                     'trackable_type' => 'item',
                     'trackable_id' => $out->trackable_id,
                     'movement_type' => str_replace('_out', '_in', $out->movement_type),
