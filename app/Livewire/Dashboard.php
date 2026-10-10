@@ -2,6 +2,7 @@
 namespace App\Livewire;
 
 use App\Models\Customer\CustomerMaterialJob;
+use App\Models\Location;
 use App\Models\Customer\InstallmentScheme;
 use App\Models\Exchange\ExchangeTransaction;
 use App\Models\Exchange\RefineryBatch;
@@ -146,6 +147,12 @@ class Dashboard extends Component
             ];
         });
 
+        // In-store places other than the vault (counters, displays...), by name.
+        $names = Location::pluck('name', 'id');
+        $vaultId = Location::vault()?->id;
+        $floor = collect(Location::itemLocations())->reject(fn ($l) => $l === $vaultId)->countBy()
+            ->mapWithKeys(fn ($n, $id) => [$names[$id] ?? 'Counter' => $n]);
+
         $counterN = (int) $counter->n;
         $locations = collect([
             'vault' => ['label' => 'In the vault', 'count' => $n('in_stock') - $counterN, 'weight' => $w('in_stock') - (float) $counter->w, 'overdue' => 0],
@@ -168,6 +175,7 @@ class Dashboard extends Component
             'inStock' => $n('in_stock'),
             'sold' => $n('sold'),
             'counter' => $counterN,
+            'floor' => $floor,
             'outCount' => $n('dispatched'),
             'overdue' => $out->sum('overdue'),
             'overdueKarigar' => $out['karigar']['overdue'],
@@ -217,10 +225,12 @@ class Dashboard extends Component
 
         // Everything physically outside the vault, wherever it is (counter, display,
         // karigar, hallmarking, photos, anything else), so nothing is out unnoticed.
-        $outOfVault = $stock['locations']->only(['counter', 'karigar', 'hallmark', 'photo', 'custom', 'melt', 'other']);
-        $add(true, 'reports.location', (int) $outOfVault->sum('count'), [
+        $away = $stock['locations']->only(['karigar', 'hallmark', 'photo', 'custom', 'melt', 'other']);
+        $outOfVault = $stock['floor']->map(fn ($n, $name) => $n . ' at ' . $name)
+            ->concat($away->map(fn ($l) => $l['count'] . ' ' . strtolower($l['label'])));
+        $add(true, 'reports.location', (int) ($stock['floor']->sum() + $away->sum('count')), [
             'tone' => 'warning', 'icon' => 'layers', 'title' => 'Pieces out of the vault',
-            'detail' => $outOfVault->map(fn ($l) => $l['count'] . ' ' . strtolower($l['label']))->implode(', ') . '.',
+            'detail' => $outOfVault->implode(', ') . '.',
         ]);
 
         $unverified = Sale::where('confirmed_by_accountant', false);

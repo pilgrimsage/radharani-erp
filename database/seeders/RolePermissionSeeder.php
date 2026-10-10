@@ -15,7 +15,7 @@ class RolePermissionSeeder extends Seeder
             'rate.update', 'ledger.view', 'ledger.manage',
             'employee.manage', 'user.manage', 'role.manage',
             'audit.view', 'discount.manage', 'referral.manage', 'customer.manage',
-            'orders.manage', 'exchange.manage', 'website.manage',
+            'orders.manage', 'exchange.manage', 'website.manage', 'location.manage',
         ];
 
         foreach ($permissions as $name) {

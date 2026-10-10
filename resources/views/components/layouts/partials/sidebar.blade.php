@@ -79,6 +79,7 @@ $nav = [
         ['route' => 'admin.customers', 'label' => 'Customers', 'can' => 'customer.manage'],
         ['route' => 'admin.employees', 'label' => 'Employees', 'can' => 'employee.manage'],
         ['route' => 'admin.users', 'label' => 'Users', 'can' => 'user.manage'],
+        ['route' => 'admin.locations', 'label' => 'Locations', 'can' => 'location.manage'],
         ['route' => 'admin.roles', 'label' => 'Roles & Permissions', 'can' => 'role.manage'],
         ['route' => 'admin.referrals', 'label' => 'Referrals', 'can' => 'referral.manage'],
         ['route' => 'admin.audit-log', 'label' => 'Audit Log', 'can' => 'audit.view'],

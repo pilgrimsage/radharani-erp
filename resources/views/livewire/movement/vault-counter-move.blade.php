@@ -44,7 +44,16 @@
                         class="max-sm:!hidden !h-14 !px-5" />
                 </form>
 
-                <div class="mt-4 max-w-[320px]"><x-movement.done-by /></div>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[640px]">
+                    @if ($toCounter)
+                        <x-ui.field label="Going to" for="vc-location" error="locationId" hint="Moving something already out to a different place records a place change.">
+                            <select id="vc-location" wire:model.live="locationId" class="rj-select">
+                                @foreach ($locations as $loc)<option value="{{ $loc->id }}">{{ $loc->name }}</option>@endforeach
+                            </select>
+                        </x-ui.field>
+                    @endif
+                    <x-movement.done-by />
+                </div>
 
                 @if ($feedback)
                     <div wire:key="fb-{{ md5(json_encode($feedback) . count($tray)) }}" @class([
@@ -84,6 +93,7 @@
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span class="rj-code text-ink_text-primary">{{ $t['code'] }}</span>
                                         @if ($t['warning'])<x-ui.badge tone="warning" size="sm">{{ $t['warning'] }}</x-ui.badge>@endif
+                                        @if (! empty($t['placeChange']))<x-ui.badge tone="info" size="sm">Place change</x-ui.badge>@endif
                                     </div>
                                     <div class="text-[12.5px] text-ink_text-muted truncate">{{ $t['detail'] }}</div>
                                 </div>
@@ -106,7 +116,7 @@
                                 : '$wire.confirmMove()';
                         @endphp
                         <x-ui.button size="lg" class="ml-auto" :icon="$toCounter ? 'arrow-right' : 'archive'" target="confirmMove" x-on:click="{{ $confirmJs }}">
-                            {{ $toCounter ? 'Send ' . count($tray) . ' to Counter' : 'Return ' . count($tray) . ' to Vault' }}
+                            {{ $toCounter ? 'Send ' . count($tray) . ' to ' . ($locations->firstWhere('id', $locationId)->name ?? 'Counter') : 'Return ' . count($tray) . ' to Vault' }}
                         </x-ui.button>
                     </div>
                 @else
@@ -156,7 +166,7 @@
                             @else
                                 <span class="rj-code">{{ $r['code'] }}</span>
                             @endif
-                            <div class="text-[12px] text-ink_text-muted truncate">{{ $r['detail'] }}{{ $r['by'] ? ' · ' . $r['by'] : '' }}</div>
+                            <div class="text-[12px] text-ink_text-muted truncate">{{ $r['place'] ? $r['place'] . ' · ' : '' }}{{ $r['detail'] }}{{ $r['by'] ? ' · ' . $r['by'] : '' }}</div>
                             @if ($r['soldInside'])
                                 <x-ui.badge tone="warning" size="sm" class="mt-1">{{ $r['soldInside'] }} sold inside</x-ui.badge>
                             @endif

@@ -10,6 +10,7 @@ use App\Livewire\Admin\CustomerManager;
 use App\Livewire\Admin\CustomerDetail;
 use App\Livewire\Admin\CustomerBulkImport;
 use App\Livewire\Admin\AuditLogViewer;
+use App\Livewire\Admin\LocationManager;
 
 // Owner/manager only — gated by Spatie permissions, seeded via RolePermissionSeeder.
 Route::middleware(['auth'])->prefix('admin')->group(function () {
@@ -18,6 +19,9 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
 
     Route::get('/users', UserManager::class)
         ->middleware('permission:user.manage')->name('admin.users');
+
+    Route::get('/locations', LocationManager::class)
+        ->middleware('permission:location.manage')->name('admin.locations');
 
     Route::get('/roles', RoleManager::class)
         ->middleware('permission:role.manage')->name('admin.roles');
