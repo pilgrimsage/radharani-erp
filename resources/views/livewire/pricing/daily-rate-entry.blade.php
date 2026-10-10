@@ -32,6 +32,22 @@
             @endforeach
         </div>
 
+        <x-ui.card title="Exchange deductions" subtitle="Percent taken off old gold and silver, by metal and carat" icon="scale" class="mt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                @foreach ($carats as $metal => $list)
+                    <div>
+                        <div class="text-[12px] font-bold uppercase tracking-wide text-ink_text-muted mb-2">{{ ucfirst($metal) }}</div>
+                        <div class="space-y-2">
+                            @foreach ($list as $carat)
+                                <div class="flex items-center gap-2"><span class="w-[64px] text-[13px] text-ink_text-secondary">{{ $carat }}</span>
+                                    <input type="number" step="0.01" min="0" max="100" wire:model="deductions.{{ $metal }}.{{ \App\Livewire\Pricing\DailyRateEntry::key($carat) }}" class="rj-input tabular" aria-label="Deduction for {{ ucfirst($metal) }} {{ $carat }}"><span class="text-[13px] text-ink_text-muted">%</span></div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-ui.card>
+
         <x-ui.button type="submit" variant="primary" target="save" icon="check" class="mt-6">Save today's rates</x-ui.button>
         <p class="rj-help mt-3">Price is never stored on a piece, so saving reprices the whole catalogue at once. A rate of 0 takes that carat off the website display.</p>
     </form>

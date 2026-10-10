@@ -34,6 +34,7 @@ $nav = [
         ['route' => 'movements.log', 'label' => 'Movement Log'],
     ]],
     ['key' => 'exchange', 'label' => 'Exchange & Refinery', 'icon' => 'flame', 'can' => 'exchange.manage', 'items' => [
+        ['route' => 'exchange.list', 'label' => 'Exchanges'],
         ['route' => 'exchange.new', 'label' => 'New Exchange'],
         ['route' => 'exchange.tracker', 'label' => 'Status Tracker'],
         ['route' => 'exchange.valuation', 'label' => 'Final Valuation'],

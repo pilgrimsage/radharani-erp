@@ -1,6 +1,7 @@
 <?php
 namespace App\Livewire\Pricing;
 
+use App\Models\Exchange\ExchangeDeductionPreset;
 use App\Models\Movement\RateLog;
 use App\Models\Stock\Item;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,9 @@ class DailyRateEntry extends Component
     /** @var array<string, array<string, string>> metal => carat => rate as typed */
     public array $rates = [];
 
+    /** @var array<string, array<string, string>> metal => carat key => deduction percent for old gold and silver taken in */
+    public array $deductions = [];
+
     // Livewire reads a dot in a wire:model name as a path ("99.9" would become 99 > 9), so inputs use a dot-free key.
     public static function key(string $carat): string
     {
@@ -30,6 +34,7 @@ class DailyRateEntry extends Component
             foreach ($carats as $carat) {
                 $log = RateLog::latestFor($metal, $carat);
                 $this->rates[$metal][self::key($carat)] = $log ? (string) (float) $log->rate : '';
+                $this->deductions[$metal][self::key($carat)] = (string) (float) (ExchangeDeductionPreset::where('metal', $metal)->where('purity', $carat)->value('percent') ?? 2);
             }
         }
     }
@@ -38,6 +43,7 @@ class DailyRateEntry extends Component
     {
         $this->validate([
             'rates.*.*' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'deductions.*.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], ['rates.*.*.numeric' => 'Rates must be numbers.', 'rates.*.*.min' => 'A rate can not be negative.']);
 
         $saved = 0;
@@ -58,6 +64,21 @@ class DailyRateEntry extends Component
                 }
             }
         });
+
+        // Deduction presets for exchanges, by metal and carat (8 Oct change list, 9.2).
+        foreach (RateLog::CARATS as $metal => $carats) {
+            foreach ($carats as $carat) {
+                $typed = $this->deductions[$metal][self::key($carat)] ?? '';
+                if ($typed === '' || $typed === null) {
+                    continue;
+                }
+                $preset = ExchangeDeductionPreset::firstOrNew(['metal' => $metal, 'purity' => $carat]);
+                if (! $preset->exists || abs((float) $preset->percent - (float) $typed) > 0.004) {
+                    $preset->fill(['percent' => $typed, 'updated_by' => Auth::id()])->save();
+                    $saved++;
+                }
+            }
+        }
 
         $this->dispatch('toast', message: $saved ? "{$saved} " . \Illuminate\Support\Str::plural('rate', $saved) . ' saved.' : 'No rates changed.', type: $saved ? 'success' : 'info');
         if ($warning = $this->zeroRateWarning()) {

@@ -1,8 +1,14 @@
 <div>
-    <x-ui.page-header title="New Exchange Entry" subtitle="A guided, one-way flow for old gold/silver taken in. Each step locks in before the next opens."
+    <x-ui.page-header title="New Exchange Entry" subtitle="A guided flow for old gold or silver taken in. Each step saves as you go, so you can come back to it."
         :crumbs="[['label' => 'Exchange & Refinery'], ['label' => 'New Entry']]" />
 
-    <x-ui.stepper :steps="['1' => 'Received', '2' => 'Melted', '3' => 'Tested', '4' => 'Deduction', '5' => 'Summary']" :current="$step" />
+    <x-ui.stepper :steps="$steps" :current="$step" :reach="$this->reach" />
+
+    @if ($locked)
+        <div class="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-control bg-info-bg text-info text-[13px]"><x-ui.icon name="lock" :size="15" /> This exchange is settled and locked. It can be read but not changed.</div>
+    @elseif ($transactionId)
+        <div class="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-control bg-gold-tint text-gold-dark text-[13px]"><x-ui.icon name="info" :size="15" /> Exchange #{{ $transactionId }}. Go back to any step to change it; the later figures are worked out again. Every change is logged.</div>
+    @endif
 
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         <x-ui.card :padding="true">
@@ -29,14 +35,14 @@
                     @if ($customerId && ! $customerSearch)
                         <div class="mt-2 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-gold-tint ring-1 ring-gold-soft">
                             <x-ui.icon name="user-check" :size="15" class="text-gold-dark" />
-                            <span class="text-[13px] font-semibold text-ink_text-primary">Customer selected</span>
+                            <span class="text-[13px] font-semibold text-ink_text-primary">{{ $customer?->name }} <span class="text-ink_text-muted font-normal tabular">{{ $customer?->phone }}</span></span>
                         </div>
                     @endif
 
                     @if ($customerSearch && $customerResults->isNotEmpty())
                         <div x-show="open" class="absolute left-0 right-0 mt-2 bg-white border border-line-light rounded-xl shadow-pop p-1.5 z-dropdown">
                             @foreach ($customerResults as $c)
-                                <button type="button" wire:click="$set('customerId', {{ $c->id }})"
+                                <button type="button" wire:click="chooseCustomer({{ $c->id }})"
                                     class="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-surface-muted text-left {{ $customerId === $c->id ? 'bg-gold-tint' : '' }}">
                                     <span class="w-8 h-8 rounded-full bg-surface-sunken ring-1 ring-inset ring-line-light flex items-center justify-center text-ink_text-muted shrink-0"><x-ui.icon name="user" :size="14" /></span>
                                     <span class="flex-1 min-w-0">
@@ -48,6 +54,10 @@
                             @endforeach
                         </div>
                     @endif
+                </div>
+
+                <div class="mt-4 max-w-[240px]">
+                    <x-ui.field label="Metal" for="ne-metal" error="metal"><select id="ne-metal" wire:model="metal" class="rj-select" @disabled($locked)><option value="gold">Gold</option><option value="silver">Silver</option><option value="platinum">Platinum</option><option value="titanium">Titanium</option></select></x-ui.field>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
@@ -62,7 +72,7 @@
                     </x-ui.field>
                 </div>
 
-                <x-ui.button wire:click="next" iconRight="arrow-right" class="w-full mt-6">Continue to Melting</x-ui.button>
+                @unless ($locked)<x-ui.button wire:click="next" iconRight="arrow-right" class="w-full mt-6">{{ $transactionId ? 'Save and continue' : 'Continue to Melting' }}</x-ui.button>@endunless
             @endif
 
             {{-- ==================================================== Step 2: Melted --}}
@@ -77,7 +87,7 @@
 
                 <div class="rounded-xl bg-surface-sunken ring-1 ring-inset ring-line-light px-4 py-3 mb-5 flex items-center justify-between">
                     <span class="text-[12.5px] text-ink_text-secondary">Gross weight received</span>
-                    <span class="font-display text-[20px] font-semibold tabular">{{ number_format($grossWeight, 3) }}<span class="text-[13px] text-ink_text-muted ml-1">g</span></span>
+                    <span class="font-display text-[20px] font-semibold tabular">{{ number_format((float) $grossWeight, 3) }}<span class="text-[13px] text-ink_text-muted ml-1">g</span></span>
                 </div>
 
                 <x-ui.field label="Net weight, after melting" for="ne-net" error="netWeight" hint="The shop's own measurement is authoritative">
@@ -89,7 +99,7 @@
 
                 <div class="flex gap-2.5 mt-6">
                     <x-ui.button wire:click="back" variant="secondary" icon="arrow-left">Back</x-ui.button>
-                    <x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Continue to Testing</x-ui.button>
+                    @unless ($locked)<x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Save and continue</x-ui.button>@endunless
                 </div>
             @endif
 
@@ -125,7 +135,7 @@
 
                 <div class="flex gap-2.5 mt-6">
                     <x-ui.button wire:click="back" variant="secondary" icon="arrow-left">Back</x-ui.button>
-                    <x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Continue to Deduction</x-ui.button>
+                    @unless ($locked)<x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Save and continue</x-ui.button>@endunless
                 </div>
             @endif
 
@@ -134,15 +144,15 @@
                 <div class="flex items-center gap-2.5 mb-1.5">
                     <span class="w-9 h-9 rounded-xl bg-gold-tint text-gold-dark flex items-center justify-center"><x-ui.icon name="percent" :size="17" /></span>
                     <div>
-                        <div class="font-display text-[20px] font-semibold leading-tight">Shop's preset deduction</div>
+                        <div class="font-display text-[20px] font-semibold leading-tight">The preset deduction</div>
                         <div class="text-[12.5px] text-ink_text-secondary">Step 4 of 5</div>
                     </div>
                 </div>
-                <p class="text-[12.5px] text-ink_text-muted mb-4">Applied automatically — not typed per transaction.</p>
+                <p class="text-[12.5px] text-ink_text-muted mb-4">Set by metal and carat on the daily rates page, and applied automatically. It follows the tested purity.</p>
 
                 <dl class="rj-dl bg-surface-sunken ring-1 ring-inset ring-line-light rounded-xl px-4 !py-3.5">
-                    <div><dt>Net weight</dt><dd class="tabular">{{ number_format($netWeight, 3) }} g</dd></div>
-                    <div><dt>Preset deduction</dt><dd class="tabular">{{ number_format($presetDeductionPercent, 2) }}%</dd></div>
+                    <div><dt>Net weight</dt><dd class="tabular">{{ number_format((float) $netWeight, 3) }} g</dd></div>
+                    <div><dt>Preset deduction</dt><dd class="tabular">{{ number_format($this->presetDeductionPercent, 2) }}%</dd></div>
                     <div class="col-span-2 pt-2 mt-1 border-t border-line-light">
                         <dt class="font-bold text-ink_text-primary">Net payable weight</dt>
                         <dd class="font-display text-[22px] font-semibold tabular text-ink_text-primary">{{ number_format($this->deductedWeight, 3) }} g</dd>
@@ -151,7 +161,7 @@
 
                 <div class="flex gap-2.5 mt-6">
                     <x-ui.button wire:click="back" variant="secondary" icon="arrow-left">Back</x-ui.button>
-                    <x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Compile Summary</x-ui.button>
+                    <x-ui.button wire:click="next" iconRight="arrow-right" class="flex-1">Compile summary</x-ui.button>
                 </div>
             @endif
 
@@ -161,7 +171,7 @@
                     <span class="w-9 h-9 rounded-xl bg-success-bg text-success flex items-center justify-center"><x-ui.icon name="check-circle" :size="17" /></span>
                     <div>
                         <div class="font-display text-[20px] font-semibold leading-tight">Ready to send to accounts</div>
-                        <div class="text-[12.5px] text-ink_text-secondary">Transaction #{{ $transactionId }} · stage "Tested"</div>
+                        <div class="text-[12.5px] text-ink_text-secondary">Transaction #{{ $transactionId }}</div>
                     </div>
                 </div>
 
@@ -183,10 +193,10 @@
         <aside class="space-y-6 xl:sticky xl:top-24">
             <x-ui.card title="This transaction" icon="scale">
                 <dl class="rj-dl">
-                    <div><dt>Gross received</dt><dd class="tabular">{{ $step >= 1 ? number_format($grossWeight, 3) . ' g' : '—' }}</dd></div>
-                    <div><dt>Net after melt</dt><dd class="tabular">{{ $step >= 2 ? number_format($netWeight, 3) . ' g' : '—' }}</dd></div>
+                    <div><dt>Gross received</dt><dd class="tabular">{{ $step >= 1 ? number_format((float) $grossWeight, 3) . ' g' : '—' }}</dd></div>
+                    <div><dt>Net after melt</dt><dd class="tabular">{{ $step >= 2 ? number_format((float) $netWeight, 3) . ' g' : '—' }}</dd></div>
                     <div><dt>Avg. purity</dt><dd class="tabular">{{ $step >= 3 && $this->averagePurity ? $this->averagePurity . '%' : '—' }}</dd></div>
-                    <div><dt>Deduction</dt><dd class="tabular">{{ $step >= 4 ? number_format($presetDeductionPercent, 2) . '%' : '—' }}</dd></div>
+                    <div><dt>Deduction</dt><dd class="tabular">{{ $step >= 4 ? number_format($this->presetDeductionPercent, 2) . '%' : '—' }}</dd></div>
                     <div class="col-span-2 pt-2 mt-1 border-t border-line-light">
                         <dt class="font-bold text-ink_text-primary">Net payable weight</dt>
                         <dd class="font-display text-[22px] font-semibold tabular text-ink_text-primary">{{ $step >= 4 ? number_format($this->deductedWeight, 3) . ' g' : '—' }}</dd>

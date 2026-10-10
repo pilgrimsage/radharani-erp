@@ -13,7 +13,8 @@
 
     <x-ui.card title="Send a new batch" subtitle="Weigh the accumulated scrap and photograph it before it leaves the shop" icon="flame" class="mb-8 max-w-[560px]">
         <form wire:submit="submit">
-            <x-ui.field label="Old gold weight" for="rs-weight" error="weight">
+            <x-ui.field label="Metal" for="rs-metal" error="metal"><select id="rs-metal" wire:model="metal" class="rj-select"><option value="gold">Gold</option><option value="silver">Silver</option><option value="platinum">Platinum</option><option value="titanium">Titanium</option></select></x-ui.field>
+            <x-ui.field label="Old scrap weight" for="rs-weight" error="weight" class="mt-4">
                 <div class="rj-input-icon">
                     <x-ui.icon name="scale" :size="16" />
                     <input id="rs-weight" type="number" step="0.001" min="0" wire:model="weight" class="rj-input tabular">

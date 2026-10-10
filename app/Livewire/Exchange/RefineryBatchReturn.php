@@ -2,6 +2,7 @@
 namespace App\Livewire\Exchange;
 
 use App\Livewire\Concerns\WithDataTable;
+use App\Models\Exchange\ExchangeDeductionPreset;
 use App\Models\Exchange\RefineryBatch;
 use Livewire\Component;
 
@@ -17,8 +18,8 @@ class RefineryBatchReturn extends Component
     use WithDataTable;
 
     public ?int $batchId = null;
-    public float $refinedWeight = 0;
-    public float $refinedPurity = 0;
+    public $refinedWeight = '';
+    public $refinedPurity = '';
 
     protected function sortableColumns(): array
     {
@@ -45,6 +46,20 @@ class RefineryBatchReturn extends Component
         $this->batchId = $batchId;
     }
 
+    // Weight, purity and the deduction give the resulting figure, the way the exchange works it out:
+    // the pure metal in the refined weight, less the deduction set for that metal and carat.
+    public function calculation(?RefineryBatch $batch = null): array
+    {
+        $batch ??= $this->batchId ? RefineryBatch::find($this->batchId) : null;
+        if (! $batch || ! is_numeric($this->refinedWeight) || ! is_numeric($this->refinedPurity)) {
+            return ['fine' => 0.0, 'percent' => 0.0, 'result' => 0.0];
+        }
+        $fine = (float) $this->refinedWeight * (float) $this->refinedPurity / 100;
+        $percent = ExchangeDeductionPreset::percentFor($batch->metal, (float) $this->refinedPurity);
+
+        return ['fine' => round($fine, 3), 'percent' => $percent, 'result' => round($fine * (1 - $percent / 100), 3)];
+    }
+
     public function submit()
     {
         $this->validate([
@@ -55,15 +70,19 @@ class RefineryBatchReturn extends Component
 
         $batch = RefineryBatch::where('status', 'sent')->findOrFail($this->batchId);
 
+        $calc = $this->calculation($batch);
+
         $batch->update([
             'refined_weight' => $this->refinedWeight,
             'refined_purity' => $this->refinedPurity,
+            'deduction_percent' => $calc['percent'],
+            'result_weight' => $calc['result'],
             'status' => 'returned',
             'returned_at' => now(),
             'returned_by' => auth()->id(),
         ]);
 
-        $this->dispatch('toast', message: "Return recorded for batch #{$batch->id} — {$this->refinedWeight}g at {$this->refinedPurity}%.", type: 'success');
+        $this->dispatch('toast', message: "Return recorded for batch #{$batch->id}: {$calc['result']} g after the deduction.", type: 'success');
         $this->reset(['refinedWeight', 'refinedPurity']);
         $this->batchId = RefineryBatch::where('status', 'sent')->oldest('sent_at')->value('id');
     }
@@ -78,6 +97,7 @@ class RefineryBatchReturn extends Component
         $query = $this->applySorting($query)->orderByDesc('id');
 
         return view('livewire.exchange.refinery-batch-return', [
+            'calc' => $this->calculation(),
             'outstandingBatches' => RefineryBatch::where('status', 'sent')->oldest('sent_at')->get(),
             'returnedBatches' => $query->paginate($this->perPageValue()),
         ])->layout('components.layouts.app', ['title' => 'Refinery — Return — Radharani Jewellery']);
