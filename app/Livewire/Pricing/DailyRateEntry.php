@@ -18,12 +18,18 @@ class DailyRateEntry extends Component
     /** @var array<string, array<string, string>> metal => carat => rate as typed */
     public array $rates = [];
 
+    // Livewire reads a dot in a wire:model name as a path ("99.9" would become 99 > 9), so inputs use a dot-free key.
+    public static function key(string $carat): string
+    {
+        return str_replace(['.', ' '], '_', $carat);
+    }
+
     public function mount(): void
     {
         foreach (RateLog::CARATS as $metal => $carats) {
             foreach ($carats as $carat) {
                 $log = RateLog::latestFor($metal, $carat);
-                $this->rates[$metal][$carat] = $log ? (string) (float) $log->rate : '';
+                $this->rates[$metal][self::key($carat)] = $log ? (string) (float) $log->rate : '';
             }
         }
     }
@@ -38,7 +44,7 @@ class DailyRateEntry extends Component
         DB::transaction(function () use (&$saved) {
             foreach (RateLog::CARATS as $metal => $carats) {
                 foreach ($carats as $carat) {
-                    $typed = $this->rates[$metal][$carat] ?? '';
+                    $typed = $this->rates[$metal][self::key($carat)] ?? '';
                     if ($typed === '' || $typed === null) {
                         continue;
                     }

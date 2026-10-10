@@ -2,25 +2,7 @@
     <x-ui.page-header title="New Exchange Entry" subtitle="A guided, one-way flow for old gold/silver taken in. Each step locks in before the next opens."
         :crumbs="[['label' => 'Exchange & Refinery'], ['label' => 'New Entry']]" />
 
-    {{-- Stepper --}}
-    <ol class="flex items-center gap-2 sm:gap-3 mb-7 overflow-x-auto pb-1">
-        @foreach (['1' => 'Received', '2' => 'Melted', '3' => 'Tested', '4' => 'Deduction', '5' => 'Summary'] as $n => $name)
-            <li class="flex items-center gap-2 sm:gap-3 shrink-0">
-                <button type="button" wire:click="goToStep({{ $n }})" @disabled($n > $step + 1)
-                    class="flex items-center gap-2.5 h-10 pl-1.5 pr-4 rounded-full transition-colors
-                    {{ $n == $step ? 'bg-ink text-white shadow-raised' : ($n < $step ? 'bg-white text-ink_text-primary ring-1 ring-line hover:ring-gold-soft' : 'bg-surface-muted text-ink_text-muted') }}">
-                    <span class="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold
-                        {{ $n == $step ? 'gold-sheen text-white' : ($n < $step ? 'bg-success-bg text-success' : 'bg-white text-ink_text-muted') }}">
-                        @if ($n < $step) <x-ui.icon name="check" :size="13" /> @else {{ $n }} @endif
-                    </span>
-                    <span class="text-[13px] font-semibold whitespace-nowrap">{{ $name }}</span>
-                </button>
-                @unless ($loop->last)
-                    <span class="w-6 sm:w-10 h-px {{ $n < $step ? 'bg-gold' : 'bg-line' }}"></span>
-                @endunless
-            </li>
-        @endforeach
-    </ol>
+    <x-ui.stepper :steps="['1' => 'Received', '2' => 'Melted', '3' => 'Tested', '4' => 'Deduction', '5' => 'Summary']" :current="$step" />
 
     <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         <x-ui.card :padding="true">

@@ -18,12 +18,12 @@
                 <x-ui.card :title="ucfirst($metal)" subtitle="₹ per gram" icon="coins">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         @foreach ($list as $carat)
-                            <x-ui.field :label="$carat" :for="'rate-' . $metal . '-' . $loop->index" :error="'rates.' . $metal . '.' . $carat"
+                            <x-ui.field :label="$carat" :for="'rate-' . $metal . '-' . $loop->index" :error="'rates.' . $metal . '.' . \App\Livewire\Pricing\DailyRateEntry::key($carat)"
                                 :hint="'Last set: ' . ($last[$metal][$carat]?->created_at?->diffForHumans() ?? 'never') . ($last[$metal][$carat] && (float) $last[$metal][$carat]->rate <= 0 ? ' · hidden from display' : '')">
                                 <div class="rj-input-icon">
                                     <x-ui.icon name="coins" :size="16" />
-                                    <input id="rate-{{ $metal }}-{{ $loop->index }}" type="number" step="0.01" min="0" wire:model="rates.{{ $metal }}.{{ $carat }}"
-                                        class="rj-input tabular @error('rates.' . $metal . '.' . $carat) is-invalid @enderror">
+                                    <input id="rate-{{ $metal }}-{{ $loop->index }}" type="number" step="0.01" min="0" wire:model="rates.{{ $metal }}.{{ \App\Livewire\Pricing\DailyRateEntry::key($carat) }}"
+                                        class="rj-input tabular @error('rates.' . $metal . '.' . \App\Livewire\Pricing\DailyRateEntry::key($carat)) is-invalid @enderror">
                                 </div>
                             </x-ui.field>
                         @endforeach
