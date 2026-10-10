@@ -84,6 +84,8 @@ class NewOrderEntry extends Component
             'created_by' => auth()->id(),
         ]);
 
+        \App\Support\MessageTemplates::queue('order_accepted', $order->customer, \App\Support\MessageTemplates::orderAccepted($order), 'order', $order->id);
+
         session()->flash('toast', "Order #{$order->id} created.");
 
         return $this->redirectRoute('orders.show', $order);

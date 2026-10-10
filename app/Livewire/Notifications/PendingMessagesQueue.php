@@ -23,6 +23,9 @@ class PendingMessagesQueue extends Component
     #[Url(except: 'pending')]
     public string $statusFilter = 'pending';
 
+    #[Url(as: 'group', except: '')]
+    public string $groupFilter = ''; // '' | Sales | Installment | Order | Other
+
     protected function sortableColumns(): array
     {
         return [
@@ -38,7 +41,7 @@ class PendingMessagesQueue extends Component
 
     protected function filterProperties(): array
     {
-        return ['statusFilter'];
+        return ['statusFilter', 'groupFilter'];
     }
 
     // statusFilter defaults to 'pending', not '', so the trait's own
@@ -47,7 +50,7 @@ class PendingMessagesQueue extends Component
     // by the view instead.
     public function hasNonDefaultFilters(): bool
     {
-        return $this->search !== '' || $this->statusFilter !== 'pending';
+        return $this->search !== '' || $this->statusFilter !== 'pending' || $this->groupFilter !== '';
     }
 
     public function markSent(int $id)
@@ -60,6 +63,7 @@ class PendingMessagesQueue extends Component
     {
         $query = PendingNotification::with('customer')
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when(isset(\App\Support\MessageTemplates::GROUPS[$this->groupFilter]), fn ($q) => $q->whereIn('type', array_keys(\App\Support\MessageTemplates::GROUPS[$this->groupFilter])))
             ->when($this->search, fn ($q) => $q->where('message', 'like', "%{$this->search}%")
                 ->orWhere('recipient_name', 'like', "%{$this->search}%")
                 ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$this->search}%")));

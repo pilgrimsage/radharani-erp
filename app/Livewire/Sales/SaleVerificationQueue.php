@@ -56,15 +56,7 @@ class SaleVerificationQueue extends Component
         // activity-log timeline picks up the reserved -> sold transition.
         $sale->items->where('status', 'reserved')->each(fn ($item) => $item->update(['status' => 'sold']));
 
-        PendingNotification::create([
-            'customer_id' => $sale->customer_id,
-            'type' => 'sale_confirmation',
-            'recipient_name' => $sale->customer->name ?? null,
-            'recipient_phone' => $sale->customer->phone ?? null,
-            'message' => "Your purchase (Invoice #{$sale->invoice_number}) for ₹{$sale->total} has been confirmed. Thank you!",
-            'status' => 'pending',
-            'created_by' => Auth::id(),
-        ]);
+        \App\Support\MessageTemplates::queue('sale_confirmation', $sale->customer, \App\Support\MessageTemplates::saleConfirmation($sale), 'sale', $sale->id);
 
         $this->dispatch('toast', message: "Sale verified as invoice {$sale->invoice_number}.", type: 'success');
     }

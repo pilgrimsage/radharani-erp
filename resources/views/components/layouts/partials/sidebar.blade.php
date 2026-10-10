@@ -49,6 +49,7 @@ $nav = [
     ]],
     ['key' => 'pricing', 'label' => 'Pricing & Rates', 'icon' => 'trending-up', 'items' => [
         ['route' => 'pricing.rates', 'label' => 'Daily Rate Entry', 'can' => 'rate.update'],
+        ['route' => 'pricing.simulator', 'label' => 'Price Simulator', 'can' => 'rate.update'],
         ['route' => 'pricing.rates.history', 'label' => 'Rate History', 'can' => 'rate.update'],
         ['route' => 'pricing.making-charges', 'label' => 'Making Charges', 'can' => 'rate.update'],
         ['route' => 'pricing.discounts', 'label' => 'Discount Rules', 'can' => 'discount.manage'],

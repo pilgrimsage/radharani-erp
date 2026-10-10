@@ -44,6 +44,8 @@ class SchemeEnrolment extends Component
             'status' => 'active',
         ]);
 
+        \App\Support\MessageTemplates::queue('scheme_welcome', $scheme->customer, \App\Support\MessageTemplates::schemeWelcome($scheme), 'installment_scheme', $scheme->id);
+
         $this->dispatch('toast', message: "{$scheme->customer->name} enrolled in the installment scheme.", type: 'success');
         $this->reset(['customerId', 'monthlyAmount']);
         $this->startDate = now()->toDateString();
