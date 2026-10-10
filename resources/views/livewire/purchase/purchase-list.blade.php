@@ -1,96 +1,41 @@
 <div>
-    <x-ui.page-header title="Purchases" subtitle="Payment status is fixed at entry and cannot be edited here — see note below."
-        :crumbs="[['label' => 'Purchases & Vendors', 'href' => route('purchases.list')], ['label' => 'Purchases']]">
-        <x-slot:actions>
-            <x-ui.button icon="plus" :href="route('purchases.new')">New purchase</x-ui.button>
-        </x-slot:actions>
+    <x-ui.page-header title="Purchases" subtitle="Raw material that came in, newest first. Each entry is identified by its date and time."
+        :crumbs="[['label' => 'Purchases']]">
+        <x-slot:actions><x-ui.button icon="plus" :href="route('purchases.new')">New purchase</x-ui.button></x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <x-ui.stat-card icon="clipboard" label="Total purchases" :value="number_format($stats['total'])" />
-        <x-ui.stat-card icon="gem" label="Finished product" :value="number_format($stats['finishedProduct'])" />
-        <x-ui.stat-card icon="scale" label="Raw material" :value="number_format($stats['rawMaterial'])" />
-        <x-ui.stat-card icon="coins" label="Total spend" :value="'₹'.number_format($stats['totalSpend'], 2)" />
+    <div class="grid grid-cols-2 gap-4 mb-6 max-w-[520px]">
+        <x-ui.stat-card icon="cart" label="Purchases" :value="number_format($stats['total'])" />
+        <x-ui.stat-card icon="scale" label="Weight in" :value="number_format($stats['weight'], 3) . ' g'" />
     </div>
 
     <x-ui.datatable :paginator="$purchases">
         <x-slot:toolbar>
-            <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Search invoice no. or vendor" class="w-full sm:w-[280px]" />
-            <select wire:model.live="typeFilter" class="rj-select rj-input-sm">
-                <option value="">All types</option>
-                <option value="finished_product">Finished product</option>
-                <option value="raw_material">Raw material</option>
-            </select>
-            <select wire:model.live="statusFilter" class="rj-select rj-input-sm">
-                <option value="">All statuses</option>
-                <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
-                <option value="paid">Paid</option>
-            </select>
-            @if ($this->hasActiveFilters())
-                <x-ui.button variant="ghost" size="sm" icon="x" wire:click="resetFilters">Clear</x-ui.button>
-            @endif
+            <x-ui.search-input wire:model.live.debounce.300ms="search" placeholder="Bill reference or notes" class="w-full sm:w-[280px]" />
+            @if ($this->hasActiveFilters())<x-ui.button variant="ghost" size="sm" icon="x" wire:click="resetFilters">Clear</x-ui.button>@endif
         </x-slot:toolbar>
-
         <x-slot:head>
-            <x-ui.th>#</x-ui.th>
-            <x-ui.th field="vendor" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Vendor</x-ui.th>
-            <x-ui.th>Type</x-ui.th>
-            <x-ui.th>Invoice</x-ui.th>
-            <x-ui.th align="right">Weight</x-ui.th>
-            <x-ui.th field="amount" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()" align="right">Amount</x-ui.th>
-            <x-ui.th>Status</x-ui.th>
-            <x-ui.th field="created" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Date</x-ui.th>
+            <x-ui.th field="created" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()">Entered</x-ui.th>
+            <x-ui.th>What came in</x-ui.th>
+            <x-ui.th field="weight" :sort-field="$this->currentSortField()" :sort-direction="$this->currentSortDirection()" align="right">Weight</x-ui.th>
+            <x-ui.th>Bill ref</x-ui.th>
+            <x-ui.th>Order</x-ui.th>
+            <x-ui.th>Notes</x-ui.th>
         </x-slot:head>
-
         @forelse ($purchases as $p)
-            <tr wire:key="purchase-{{ $p->id }}">
-                <td class="text-ink_text-secondary">#{{ $p->id }}</td>
-                <td class="text-ink_text-primary font-semibold">{{ $p->vendor->name ?? '—' }}</td>
-                <td>
-                    @if ($p->type === 'raw_material')
-                        <x-ui.badge tone="gold" size="sm">Raw Material</x-ui.badge>
-                    @else
-                        <x-ui.badge tone="info" size="sm">Finished Product</x-ui.badge>
-                    @endif
+            <tr wire:key="pu-{{ $p->id }}">
+                <td class="whitespace-nowrap">{{ $p->label }}<span class="block text-[12px] text-ink_text-muted">{{ $p->creator?->name }}</span></td>
+                <td class="text-[13px]">
+                    @forelse ($p->lines as $l)<span class="block">{{ ucfirst($l->metal ?? '') }} {{ $l->purity }} · {{ number_format($l->weight, 3) }} g @if ($l->description)<span class="text-ink_text-muted">· {{ $l->description }}</span>@endif</span>
+                    @empty <span class="text-ink_text-muted">{{ $p->type === 'finished_product' ? 'Finished goods (old entry)' : '-' }}</span> @endforelse
                 </td>
-                <td class="text-ink_text-primary">{{ $p->invoice_number ?: '—' }}</td>
-                <td class="text-right tabular text-ink_text-secondary">{{ $p->total_weight ? number_format($p->total_weight, 3).' g' : '—' }}</td>
-                <td class="text-right tabular text-ink_text-primary">₹{{ number_format($p->total_amount, 2) }}</td>
-                <td>
-                    @if ($p->payment_status === 'paid')
-                        <x-ui.badge tone="success" size="sm" dot>Paid</x-ui.badge>
-                    @elseif ($p->payment_status === 'partial')
-                        <x-ui.badge tone="neutral" size="sm" dot>Partial</x-ui.badge>
-                    @else
-                        <x-ui.badge tone="warning" size="sm" dot>Pending</x-ui.badge>
-                    @endif
-                </td>
-                <td class="text-[12.5px] text-ink_text-secondary whitespace-nowrap">{{ $p->created_at->format('d M Y') }}</td>
+                <td class="text-right tabular">{{ $p->total_weight ? number_format($p->total_weight, 3) . ' g' : '-' }}</td>
+                <td class="rj-code">{{ $p->invoice_number ?: '-' }}</td>
+                <td>@if ($p->order)<a href="{{ route('orders.show', $p->order) }}" class="text-gold-dark hover:underline">#{{ $p->order->id }} {{ $p->order->customer?->name }}</a>@else - @endif</td>
+                <td class="text-ink_text-secondary max-w-[260px] truncate">{{ $p->notes ?: '-' }}</td>
             </tr>
         @empty
-            <tr>
-                <td colspan="8">
-                    @if ($this->hasActiveFilters())
-                        <x-ui.empty-state icon="search" title="No purchases match these filters" message="Try a different search, type, or status.">
-                            <x-ui.button variant="secondary" size="sm" wire:click="resetFilters">Clear filters</x-ui.button>
-                        </x-ui.empty-state>
-                    @else
-                        <x-ui.empty-state icon="clipboard" title="No purchases recorded yet" message="Record the first purchase from a karigar or supplier.">
-                            <x-ui.button size="sm" icon="plus" :href="route('purchases.new')">New purchase</x-ui.button>
-                        </x-ui.empty-state>
-                    @endif
-                </td>
-            </tr>
+            <tr><td colspan="6"><x-ui.empty-state icon="cart" title="No purchases yet" message="Record the first raw-material purchase."><x-ui.button size="sm" icon="plus" :href="route('purchases.new')">New purchase</x-ui.button></x-ui.empty-state></td></tr>
         @endforelse
     </x-ui.datatable>
-
-    <div class="mt-6 rounded-card bg-surface-sunken ring-1 ring-inset ring-line-light p-5 max-w-[720px]">
-        <div class="flex items-center gap-2 text-[12.5px] font-semibold text-ink_text-secondary mb-2">
-            <x-ui.icon name="info" :size="14" /> Why payment status cannot be edited here
-        </div>
-        <p class="text-[12.5px] text-ink_text-secondary leading-relaxed">
-            Payment status can't be changed from "pending" to "paid"/"partial" after the purchase is saved — the rule against ever updating a purchases row applies here the same way it does to sales. Recording a payment update would need a correction mechanism (a new row referencing this one, owner-approved), which does not exist yet.
-        </p>
-    </div>
 </div>

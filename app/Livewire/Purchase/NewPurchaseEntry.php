@@ -1,191 +1,115 @@
 <?php
 namespace App\Livewire\Purchase;
 
+use App\Livewire\Stock\ItemForm;
+use App\Models\Movement\RawMetalEntry;
+use App\Models\Orders\Order;
 use App\Models\Purchase\Purchase;
 use App\Models\Purchase\PurchaseItem;
-use App\Models\Purchase\Vendor;
-use App\Models\Stock\Item;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
- * New Purchase Entry — admin-only (gated by purchase.manage).
- *
- * Finished-product purchases (vendor already delivers tagged items) attach
- * real items with a rate/weight to purchase_items. Raw-material purchases
- * save a purchases header row (vendor, total weight, total amount, GST,
- * status) plus one or more untagged description lines — each becomes a
- * purchase_items row with item_id = null and tag_pending = true. Those
- * lines are later converted into real Item rows from the "Pending Tags"
- * section on the Stock > Items screen, which fills in item_id and flips
- * tag_pending back to false (a purchase_items update, not a purchases row
- * update, so CLAUDE.md rule 1 still holds).
+ * Raw-material purchase (8 Oct change list, section 13): only a reference bill number, a notes
+ * box and what came in by metal, carat and weight. No money, no vendor, no payment status.
+ * Each entry is a batch identified by its date and time, and adds to the raw-metal balance.
+ * Finished goods are not bought here; they come in through import.
  */
 class NewPurchaseEntry extends Component
 {
-    public string $purchaseType = 'raw_material';
-    public ?int $vendorId = null;
-    public string $invoiceNumber = '';
-    public string $totalWeight = '';
-    public string $totalAmount = '';
-    public string $gst = '';
-    public string $paymentStatus = 'pending';
+    public string $billRef = '';
+    public string $notes = '';
 
-    // Finished-product line items
+    #[Url(as: 'order', except: '')]
+    public ?int $orderId = null;
+
+    /** @var array<int, array{metal: string, purity: string, weight: string, description: string}> */
     public array $lines = [];
-    public string $itemSearch = '';
 
-    // Raw-material description lines (no item yet — tagged later in Stock)
-    public array $rawLines = [];
-
-    public function mount()
+    public function mount(): void
     {
-        $this->addBlankLine();
-        $this->addBlankRawLine();
-    }
-
-    public function addBlankLine()
-    {
-        $this->lines[] = ['item_id' => null, 'label' => '', 'rate' => '', 'weight' => ''];
-    }
-
-    public function removeLine(int $index)
-    {
-        unset($this->lines[$index]);
-        $this->lines = array_values($this->lines);
-    }
-
-    public function addBlankRawLine()
-    {
-        $this->rawLines[] = [
-            'description' => '', 'category' => '', 'metal' => 'gold',
-            'purity' => '', 'weight' => '', 'rate' => '',
-        ];
-    }
-
-    public function removeRawLine(int $index)
-    {
-        unset($this->rawLines[$index]);
-        $this->rawLines = array_values($this->rawLines);
-    }
-
-    public function pickItem(int $index, int $itemId)
-    {
-        $item = Item::find($itemId);
-        if ($item) {
-            $this->lines[$index]['item_id'] = $item->id;
-            $this->lines[$index]['label'] = $item->huid_code ?: $item->internal_code;
-            $this->lines[$index]['weight'] = (string) $item->weight;
+        $this->addLine();
+        if ($this->orderId && ! Order::whereKey($this->orderId)->exists()) {
+            $this->orderId = null;
         }
     }
 
-    public function getLineCountProperty(): int
+    public function addLine(): void
     {
-        $lines = $this->purchaseType === 'raw_material' ? $this->rawLines : $this->lines;
-
-        return collect($lines)->filter(fn ($l) => $this->purchaseType === 'raw_material'
-            ? ($l['description'] !== '' || $l['weight'] !== '')
-            : ($l['item_id'] && $l['rate'] !== '' && $l['weight'] !== ''))->count();
+        $this->lines[] = ['metal' => 'gold', 'purity' => '24K', 'weight' => '', 'description' => ''];
     }
 
-    public function getLineWeightTotalProperty(): float
+    public function removeLine(int $i): void
     {
-        $lines = $this->purchaseType === 'raw_material' ? $this->rawLines : $this->lines;
-
-        return round(collect($lines)->sum(fn ($l) => (float) ($l['weight'] ?: 0)), 3);
+        unset($this->lines[$i]);
+        $this->lines = array_values($this->lines) ?: [['metal' => 'gold', 'purity' => '24K', 'weight' => '', 'description' => '']];
     }
 
-    public function getSearchResultsProperty()
+    // A different metal has different carats, so a stale pick would be wrong.
+    public function updatedLines($value, $key): void
     {
-        if (strlen($this->itemSearch) < 2) {
-            return collect();
+        if (str_ends_with($key, '.metal')) {
+            $i = (int) explode('.', $key)[0];
+            $this->lines[$i]['purity'] = (ItemForm::PURITIES[$value] ?? [''])[0];
         }
-
-        return Item::where('huid_code', 'like', "%{$this->itemSearch}%")
-            ->orWhere('internal_code', 'like', "%{$this->itemSearch}%")
-            ->limit(10)
-            ->get();
-    }
-
-    protected function rules(): array
-    {
-        $rules = [
-            'vendorId' => 'required|exists:vendors,id',
-            'invoiceNumber' => 'nullable|string|max:50',
-            'gst' => 'nullable|numeric',
-            'paymentStatus' => 'required|in:paid,partial,pending',
-        ];
-
-        if ($this->purchaseType === 'raw_material') {
-            $rules['totalWeight'] = 'required|numeric|min:0';
-            $rules['totalAmount'] = 'required|numeric|min:0';
-        } else {
-            $rules['totalAmount'] = 'required|numeric|min:0';
-        }
-
-        return $rules;
     }
 
     public function save()
     {
-        $this->validate();
+        abort_unless(Auth::user()?->can('purchase.manage'), 403);
 
-        $purchase = Purchase::create([
-            'vendor_id' => $this->vendorId,
-            'type' => $this->purchaseType,
-            'invoice_number' => $this->invoiceNumber ?: null,
-            'total_weight' => $this->totalWeight !== '' ? $this->totalWeight : null,
-            'total_amount' => $this->totalAmount,
-            'gst' => $this->gst !== '' ? $this->gst : null,
-            'payment_status' => $this->paymentStatus,
-            'created_by' => auth()->id(),
-        ]);
+        $this->validate([
+            'billRef' => ['nullable', 'string', 'max:50'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'orderId' => ['nullable', 'exists:orders,id'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.metal' => ['required', Rule::in(array_keys(ItemForm::METALS))],
+            'lines.*.purity' => ['required', 'string', 'max:10'],
+            'lines.*.weight' => ['required', 'numeric', 'min:0.001', 'max:99999'],
+            'lines.*.description' => ['nullable', 'string', 'max:100'],
+        ], ['lines.*.weight.required' => 'Enter the weight on every line.', 'lines.*.weight.numeric' => 'The weight must be a number.'], ['lines.*.weight' => 'weight']);
 
-        if ($this->purchaseType === 'finished_product') {
-            foreach ($this->lines as $line) {
-                if ($line['item_id'] && $line['rate'] !== '' && $line['weight'] !== '') {
-                    PurchaseItem::create([
-                        'purchase_id' => $purchase->id,
-                        'item_id' => $line['item_id'],
-                        'rate' => $line['rate'],
-                        'weight' => $line['weight'],
-                        'tag_pending' => false,
-                    ]);
-                }
+        $purchase = DB::transaction(function () {
+            $purchase = Purchase::create([
+                'type' => 'raw_material',
+                'invoice_number' => $this->billRef ?: null,
+                'notes' => $this->notes ?: null,
+                'order_id' => $this->orderId,
+                'total_weight' => round(collect($this->lines)->sum(fn ($l) => (float) $l['weight']), 3),
+                'created_by' => Auth::id(),
+            ]);
+
+            foreach ($this->lines as $l) {
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'item_id' => null,
+                    'description' => $l['description'] ?: null,
+                    'metal' => $l['metal'],
+                    'purity' => $l['purity'],
+                    'weight' => $l['weight'],
+                    'tag_pending' => false,
+                ]);
+                RawMetalEntry::record($l['metal'], $l['purity'], (float) $l['weight'], 'purchase', $purchase->id, $this->billRef ?: null);
             }
-        } else {
-            foreach ($this->rawLines as $line) {
-                if ($line['description'] !== '' || $line['weight'] !== '') {
-                    PurchaseItem::create([
-                        'purchase_id' => $purchase->id,
-                        'item_id' => null,
-                        'description' => $line['description'] ?: null,
-                        'category' => $line['category'] ?: null,
-                        'metal' => $line['metal'] ?: null,
-                        'purity' => $line['purity'] ?: null,
-                        'weight' => $line['weight'] !== '' ? $line['weight'] : null,
-                        'rate' => $line['rate'] !== '' ? $line['rate'] : null,
-                        'tag_pending' => true,
-                    ]);
 
-                    // Raw material bought adds to the raw-metal balance (8 Oct change list, 6.5).
-                    if ($line['metal'] && is_numeric($line['weight']) && (float) $line['weight'] > 0) {
-                        \App\Models\Movement\RawMetalEntry::record($line['metal'], $line['purity'] ?: null, (float) $line['weight'], 'purchase', $purchase->id);
-                    }
-                }
-            }
-        }
+            return $purchase;
+        });
 
-        $this->reset(['vendorId', 'invoiceNumber', 'totalWeight', 'totalAmount', 'gst', 'lines', 'rawLines']);
-        $this->paymentStatus = 'pending';
-        $this->addBlankLine();
-        $this->addBlankRawLine();
-        $this->dispatch('toast', message: "Purchase #{$purchase->id} recorded.", type: 'success');
+        $this->dispatch('toast', message: "Purchase of {$purchase->total_weight} g recorded and added to the raw-metal balance.", type: 'success');
+        $this->reset(['billRef', 'notes', 'lines']);
+        $this->addLine();
     }
 
     public function render()
     {
         return view('livewire.purchase.new-purchase-entry', [
-            'vendors' => Vendor::orderBy('name')->get(),
-        ])->layout('components.layouts.app', ['title' => 'New Purchase Entry — Radharani Jewellery']);
+            'metals' => ItemForm::METALS,
+            'purities' => ItemForm::PURITIES,
+            'orders' => Order::whereIn('status', ['placed', 'confirmed'])->with('customer:id,name')->latest('id')->limit(50)->get(),
+            'balances' => RawMetalEntry::balances(),
+        ])->layout('components.layouts.app', ['title' => 'Raw-material purchase — Radharani Jewellery']);
     }
 }

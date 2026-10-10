@@ -11,7 +11,7 @@ class Purchase extends Model
     use LogsActivity;
 
     protected $fillable = [
-        'vendor_id', 'type', 'invoice_number', 'total_weight', 'total_amount',
+        'vendor_id', 'type', 'invoice_number', 'notes', 'order_id', 'total_weight', 'total_amount',
         'gst', 'payment_status', 'created_by',
     ];
 
@@ -20,7 +20,7 @@ class Purchase extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['vendor_id', 'type', 'invoice_number', 'total_amount', 'payment_status', 'created_by'])
+            ->logOnly(['type', 'invoice_number', 'notes', 'order_id', 'total_weight', 'created_by'])
             ->useLogName('purchase');
     }
 
@@ -40,6 +40,17 @@ class Purchase extends Model
     {
         return $this->belongsToMany(\App\Models\Stock\Item::class, 'purchase_items')
             ->withPivot('rate', 'weight');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(\App\Models\Orders\Order::class);
+    }
+
+    /** Date and time identify the entry (8 Oct change list, 1.3). */
+    public function getLabelAttribute(): string
+    {
+        return $this->created_at->format('j M Y, g:i a');
     }
 
     public function creator()

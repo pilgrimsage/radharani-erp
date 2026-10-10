@@ -11,7 +11,6 @@ use App\Models\Movement\Movement;
 use App\Models\Movement\RateLog;
 use App\Models\Notification\PendingNotification;
 use App\Models\Orders\Order;
-use App\Models\Purchase\PurchaseItem;
 use App\Models\Sales\Sale;
 use App\Models\Stock\Item;
 use App\Models\Stock\Packet;
@@ -245,11 +244,6 @@ class Dashboard extends Component
         $add($can('movement.approve'), 'movements.pending-review', $stock['statusCounts']['pending_review'] ?? 0, [
             'tone' => 'warning', 'icon' => 'user-check', 'title' => 'Returns to review',
             'detail' => 'Back from karigar or hallmarking, not yet in stock.',
-        ]);
-
-        $add($can('movement.approve'), 'movements.pending-review', PurchaseItem::where('tag_pending', true)->whereNull('item_id')->count(), [
-            'tone' => 'info', 'icon' => 'tag', 'title' => 'Purchase lines to tag',
-            'detail' => 'Bought material that isn\'t a tagged piece yet.', 'params' => ['tab' => 'tags'],
         ]);
 
         $readyOrders = Order::where('status', 'ready')->pluck('id');

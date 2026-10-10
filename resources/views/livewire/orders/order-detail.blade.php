@@ -93,6 +93,11 @@
                 </ol>
             </x-ui.card>
 
+            @can('purchase.manage')
+                <div class="flex items-center gap-3 text-[13px]"><x-ui.icon name="cart" :size="15" class="text-ink_text-muted" /> Raw material bought for this order?
+                    <x-ui.button variant="secondary" size="sm" :href="route('purchases.new', ['order' => $o->id])">Record a purchase for it</x-ui.button></div>
+            @endcan
+
             @if ($o->images->isNotEmpty())
                 <x-ui.card title="Reference images" icon="image">
                     <div class="flex flex-wrap gap-3">
