@@ -59,7 +59,7 @@ class KarigarReturn extends Component
 
     public function setTab(string $tab): void
     {
-        if (in_array($tab, ['pieces', 'customer', 'raw'], true)) {
+        if (in_array($tab, ['pieces', 'customer'], true)) { // raw batches are received on the main Karigar screen
             $this->tab = $tab;
             $this->reset(['search', 'selectedId']);
             $this->resetForm();

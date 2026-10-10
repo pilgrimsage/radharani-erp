@@ -25,6 +25,7 @@ require __DIR__.'/notifications.php';
 // require __DIR__.'/loyalty.php'; // hidden: Loyalty replaced by Referral (8 Oct change list, 15.1)
 require __DIR__.'/installments.php';
 require __DIR__.'/reports.php';
+require __DIR__.'/ledgers.php';
 require __DIR__.'/storefront.php';
 require __DIR__.'/website.php';
 require __DIR__.'/admin.php';

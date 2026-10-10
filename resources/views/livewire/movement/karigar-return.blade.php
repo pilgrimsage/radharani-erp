@@ -7,7 +7,7 @@
     </x-ui.page-header>
 
     <div class="rj-segment mb-6 flex-wrap h-auto">
-        @foreach (['pieces' => ['gem', 'Pieces from repair'], 'customer' => ['user', "Customers' material"], 'raw' => ['flame', 'New pieces from raw material']] as $key => [$icon, $label])
+        @foreach (['pieces' => ['gem', 'Pieces from repair'], 'customer' => ['user', "Customers' material"]] as $key => [$icon, $label])
             <button type="button" wire:click="setTab('{{ $key }}')" class="{{ $tab === $key ? 'is-active' : '' }}">
                 <x-ui.icon :name="$icon" :size="14" /> {{ $label }}
                 <span class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold tabular inline-flex items-center justify-center {{ $tab === $key ? 'bg-gold-tint text-gold-dark' : 'bg-white text-ink_text-muted' }}">{{ $counts[$key] }}</span>

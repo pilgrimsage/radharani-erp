@@ -207,7 +207,7 @@ class Dashboard extends Component
             ]);
         }
 
-        $rawOverdue = KarigarRawBatch::where('status', '!=', 'returned')->whereDate('expected_return', '<', today())->count();
+        $rawOverdue = KarigarRawBatch::open()->whereDate('expected_return', '<', today())->count();
         $jobsOverdue = CustomerMaterialJob::where('status', 'out')->whereDate('expected_return', '<', today())->count();
         $karigarLate = $stock['overdueKarigar'] + $rawOverdue + $jobsOverdue;
         $add(true, 'movements.karigar-return', $karigarLate, [
@@ -309,7 +309,7 @@ class Dashboard extends Component
             'dueSoon' => $dueSoon,
             'exchange' => $exchange,
             'refinery' => $can('exchange.manage') ? RefineryBatch::where('status', 'sent')->count() : null,
-            'karigarRaw' => KarigarRawBatch::where('status', '!=', 'returned')->count(),
+            'karigarRaw' => KarigarRawBatch::open()->count(),
             'customerJobs' => CustomerMaterialJob::where('status', 'out')->count(),
         ];
     }
@@ -362,14 +362,20 @@ class Dashboard extends Component
             ['scan' => true, 'label' => 'Scan a tag', 'icon' => 'scan'],
             ['route' => 'movements.vault-counter', 'label' => 'Vault ↔ Counter', 'icon' => 'repeat',
                 'count' => $sum('vault_out', 'vault_in')],
-            ['route' => 'movements.karigar-dispatch', 'label' => 'Karigar send', 'icon' => 'truck',
-                'count' => $sum('karigar_out') + KarigarRawBatch::whereDate('created_at', today())->count()],
-            ['route' => 'movements.karigar-return', 'label' => 'Karigar receive', 'icon' => 'package',
-                'count' => $sum('karigar_in')],
-            ['route' => 'movements.hallmark-dispatch', 'label' => 'Hallmark send', 'icon' => 'truck',
-                'count' => $sum('hallmark_out')],
-            ['route' => 'movements.hallmark-return', 'label' => 'Hallmark receive', 'icon' => 'package',
-                'count' => $sum('hallmark_in')],
+            ['route' => 'movements.karigar', 'label' => 'Karigar issue', 'icon' => 'truck',
+                'params' => ['tab' => 'issue'], 'count' => KarigarRawBatch::whereDate('created_at', today())->count()],
+            ['route' => 'movements.karigar', 'label' => 'Karigar receive', 'icon' => 'package',
+                'params' => ['tab' => 'receive'], 'count' => \App\Models\Movement\KarigarReceipt::whereDate('created_at', today())->count()],
+            ['route' => 'movements.karigar', 'label' => 'Karigar payment', 'icon' => 'coins',
+                'params' => ['tab' => 'payments'], 'count' => \App\Models\Movement\KarigarPayment::whereDate('created_at', today())->where('kind', 'cash')->count()],
+            ['route' => 'movements.karigar', 'label' => 'Metal payment', 'icon' => 'scale',
+                'params' => ['tab' => 'payments'], 'count' => \App\Models\Movement\KarigarPayment::whereDate('created_at', today())->where('kind', 'metal')->count()],
+            ['route' => 'movements.hallmark', 'label' => 'Hallmark send', 'icon' => 'truck',
+                'params' => ['tab' => 'dispatch'], 'count' => \App\Models\Movement\HallmarkBatch::whereDate('created_at', today())->count()],
+            ['route' => 'movements.hallmark', 'label' => 'Hallmark receive', 'icon' => 'package',
+                'params' => ['tab' => 'receive'], 'count' => \App\Models\Movement\HallmarkReceipt::whereDate('created_at', today())->count()],
+            ['route' => 'ledgers.index', 'label' => 'Karigar ledger', 'icon' => 'book', 'params' => ['kind' => 'karigar'], 'can' => 'movement.create'],
+            ['route' => 'ledgers.index', 'label' => 'Hallmarker ledger', 'icon' => 'book', 'params' => ['kind' => 'hallmarker'], 'can' => 'movement.create'],
             ['route' => 'movements.custom-purpose', 'label' => 'Photo / other purpose', 'icon' => 'camera',
                 'count' => $sum('photo_out', 'photo_in', 'custom_out', 'custom_in')],
             ['route' => 'movements.pending-review', 'label' => 'Pending review', 'icon' => 'user-check', 'can' => 'movement.approve'],
@@ -386,7 +392,7 @@ class Dashboard extends Component
             ['route' => 'stock.items', 'label' => 'Inventory', 'icon' => 'gem', 'can' => 'stock.manage'],
         ])
             ->filter(fn ($a) => (empty($a['can']) || $can($a['can'])) && (! empty($a['scan']) || Route::has($a['route'])))
-            ->map(fn ($a) => $a + ['href' => isset($a['route']) ? route($a['route']) : null])
+            ->map(fn ($a) => $a + ['href' => isset($a['route']) ? route($a['route'], $a['params'] ?? []) : null])
             ->values()->all();
     }
 

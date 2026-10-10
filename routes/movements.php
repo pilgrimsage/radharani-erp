@@ -14,10 +14,14 @@ use App\Livewire\Movement\MovementLog;
 // via the movements table. See CLAUDE.md non-negotiable rule 1.
 Route::middleware(['auth'])->prefix('movements')->name('movements.')->group(function () {
     Route::get('/vault-counter', VaultCounterMove::class)->name('vault-counter');
-    Route::get('/karigar-dispatch', KarigarDispatch::class)->name('karigar-dispatch');
-    Route::get('/karigar-return', KarigarReturn::class)->name('karigar-return');
-    Route::get('/hallmark-dispatch', HallmarkDispatch::class)->name('hallmark-dispatch');
-    Route::get('/hallmark-return', HallmarkReturn::class)->name('hallmark-return');
+    Route::get('/karigar', \App\Livewire\Movement\KarigarDesk::class)->name('karigar');
+    Route::get('/karigar/batch/{batch}/report', fn (\App\Models\Movement\KarigarRawBatch $batch) => view('movements.karigar-report', ['batch' => $batch->load('vendor', 'user')]))->name('karigar.print');
+    // The old separate screens now live inside the one Karigar screen.
+    Route::redirect('/karigar-dispatch', '/movements/karigar?tab=issue')->name('karigar-dispatch');
+    Route::redirect('/karigar-return', '/movements/karigar?tab=receive')->name('karigar-return');
+    Route::get('/hallmark', \App\Livewire\Movement\HallmarkDesk::class)->name('hallmark');
+    Route::redirect('/hallmark-dispatch', '/movements/hallmark?tab=dispatch')->name('hallmark-dispatch');
+    Route::redirect('/hallmark-return', '/movements/hallmark?tab=receive')->name('hallmark-return');
     Route::get('/custom-purpose', CustomPurposeMove::class)->name('custom-purpose');
     // #9: only admins close pending items into stock.
     Route::get('/pending-review', PendingReviewQueue::class)->middleware('permission:movement.approve')->name('pending-review');

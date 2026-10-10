@@ -166,6 +166,11 @@ class NewPurchaseEntry extends Component
                         'rate' => $line['rate'] !== '' ? $line['rate'] : null,
                         'tag_pending' => true,
                     ]);
+
+                    // Raw material bought adds to the raw-metal balance (8 Oct change list, 6.5).
+                    if ($line['metal'] && is_numeric($line['weight']) && (float) $line['weight'] > 0) {
+                        \App\Models\Movement\RawMetalEntry::record($line['metal'], $line['purity'] ?: null, (float) $line['weight'], 'purchase', $purchase->id);
+                    }
                 }
             }
         }

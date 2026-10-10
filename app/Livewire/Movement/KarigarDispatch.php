@@ -60,7 +60,8 @@ class KarigarDispatch extends Component
 
     public function setSituation(string $situation): void
     {
-        if (! in_array($situation, ['tagged', 'customer_material', 'raw_material'], true)) {
+        // Raw material is issued as a batch on the main Karigar screen now.
+        if (! in_array($situation, ['tagged', 'customer_material'], true)) {
             return;
         }
         $this->situation = $situation;
