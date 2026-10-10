@@ -6,7 +6,7 @@
         <x-ui.card title="1. Download" subtitle="{{ $waiting }} piece(s) have no HUID yet" icon="download">
             <div class="rj-segment mb-4">
                 <button type="button" wire:click="$set('scope', 'waiting')" class="{{ $scope === 'waiting' ? 'is-active' : '' }}">Waiting for a HUID</button>
-                <button type="button" wire:click="$set('scope', 'all')" class="{{ $scope === 'all' ? 'is-active' : '' }}">All pieces</button>
+                <button type="button" wire:click="$set('scope', 'all')" class="{{ $scope === 'all' ? 'is-active' : '' }}">All with an internal code</button>
             </div>
             <div class="space-y-3">
                 <div class="flex items-center gap-3">

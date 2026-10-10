@@ -191,10 +191,12 @@
     <x-ui.modal wire:model="showMove" title="Move {{ $item->label }}" icon="package" max-width="sm" submit="move" subtitle="The move is recorded in the piece's and both packets' history.">
         <div class="mb-4">
             <label for="im-scan" class="block text-[12.5px] font-semibold text-ink_text-primary mb-1.5">Scan the packet or box</label>
-            <form class="flex gap-2" x-on:submit.prevent="const v = $refs.dscan.value; $refs.dscan.value = ''; if (v.trim()) $wire.scanDestination(v)">
-                <input id="im-scan" x-ref="dscan" type="text" autocomplete="off" placeholder="PKT-1-2 or BOX-01" class="rj-input rj-code flex-1">
-                <x-ui.scan-button target="#im-scan" submit="form" title="Scan the packet or box" variant="button" label="Camera" />
-            </form>
+            {{-- Not a <form>: this sits inside the modal's own form, where Enter would save the move. --}}
+            <div class="flex gap-2">
+                <input id="im-scan" x-ref="dscan" type="text" autocomplete="off" placeholder="PKT-1-2 or BOX-01" class="rj-input rj-code flex-1"
+                    x-on:keydown.enter.prevent="const v = $refs.dscan.value; $refs.dscan.value = ''; if (v.trim()) $wire.scanDestination(v)">
+                <x-ui.scan-button target="#im-scan" submit="enter" title="Scan the packet or box" variant="button" label="Camera" />
+            </div>
             @if ($moveScanError)<p class="rj-error"><x-ui.icon name="alert-triangle" :size="12" />{{ $moveScanError }}</p>@endif
             @if ($moveBox)<p class="rj-help">Showing packets in {{ $moveBox }}. <button type="button" class="text-gold-dark font-semibold" wire:click="$set('moveBox', null)">Show all</button></p>@endif
         </div>
