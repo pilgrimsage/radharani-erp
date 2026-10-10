@@ -16,7 +16,7 @@ class SalesHistory extends Component
     protected function sortableColumns(): array
     {
         return [
-            'invoice' => 'invoice_number',
+            'invoice' => 'id',
             'created' => 'created_at',
             'total' => 'total',
         ];
@@ -34,12 +34,14 @@ class SalesHistory extends Component
 
     public function render()
     {
-        $query = Sale::with('customer')
-            ->when($this->search, fn ($q) => $q
+        $query = Sale::with('customer')->withSum('payments', 'amount')
+            ->when($this->search, fn ($q) => $q->where(fn ($q) => $q
                 ->where('invoice_number', 'like', "%{$this->search}%")
-                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$this->search}%")))
+                ->orWhere('id', ltrim($this->search, '#'))
+                ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$this->search}%")->orWhere('phone', 'like', "%{$this->search}%"))))
             ->when($this->status === 'verified', fn ($q) => $q->where('confirmed_by_accountant', true))
-            ->when($this->status === 'reserved', fn ($q) => $q->where('confirmed_by_accountant', false));
+            ->when($this->status === 'reserved', fn ($q) => $q->where('confirmed_by_accountant', false))
+            ->when($this->status === 'balance', fn ($q) => $q->whereRaw('total - COALESCE((select sum(amount) from sale_payments where sale_payments.sale_id = sales.id), 0) > 0.005'));
 
         return view('livewire.sales.sales-history', [
             'sales' => $this->applySorting($query)->paginate($this->perPageValue()),
@@ -47,7 +49,7 @@ class SalesHistory extends Component
                 'total' => Sale::count(),
                 'verified' => Sale::where('confirmed_by_accountant', true)->count(),
                 'reserved' => Sale::where('confirmed_by_accountant', false)->count(),
-                'todayTotal' => Sale::whereDate('created_at', today())->sum('total'),
+                'withBalance' => Sale::whereRaw('total - COALESCE((select sum(amount) from sale_payments where sale_payments.sale_id = sales.id), 0) > 0.005')->count(),
             ],
         ])->layout('components.layouts.app', ['title' => 'Sales History — Radharani Jewellery']);
     }

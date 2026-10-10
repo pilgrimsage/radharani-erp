@@ -13,10 +13,23 @@ class LedgerDownloadController extends Controller
 {
     public function __invoke(Vendor $party, string $format, LedgerService $ledgers)
     {
-        abort_unless(in_array($party->type, ['karigar', 'hallmark_center'], true) && in_array($format, ['pdf', 'xlsx'], true), 404);
+        abort_unless(in_array($party->type, ['karigar', 'hallmark_center'], true), 404);
 
-        $ledger = $ledgers->forParty($party);
+        return $this->download($party, $ledgers->forParty($party), $format);
+    }
+
+    // The customer's own ledger, shown on their detail page.
+    public function customer(\App\Models\Customer\Customer $customer, string $format, LedgerService $ledgers)
+    {
+        return $this->download($customer, $ledgers->forCustomer($customer), $format);
+    }
+
+    private function download($party, array $ledger, string $format)
+    {
+        abort_unless(in_array($format, ['pdf', 'xlsx'], true), 404);
+
         $name = str($party->name)->slug() . '-ledger-' . now()->format('Ymd');
+        $party->type ??= 'customer';
         $fmt = fn ($v) => $v === null ? '' : (is_float($v) ? round($v, 3) : $v);
 
         if ($format === 'xlsx') {

@@ -18,9 +18,9 @@ class Sale extends Model
     // InvoiceView, the portal dashboard) fatal-errors.
     protected $casts = ['additional_charges' => 'array', 'payment_modes' => 'array', 'created_at' => 'datetime'];
     protected $fillable = [
-        'customer_id', 'invoice_number', 'type', 'cgst', 'sgst', 'igst',
-        'additional_charges', 'discount', 'payment_modes', 'accountant_note',
-        'total', 'confirmed_by_accountant', 'created_by',
+        'customer_id', 'referral_customer_id', 'invoice_number', 'type', 'cgst', 'sgst', 'igst',
+        'additional_charges', 'discount', 'adjustment_type', 'adjustment_value', 'payment_modes', 'accountant_note',
+        'order_override_note', 'total', 'confirmed_by_accountant', 'created_by',
     ];
 
     protected static function booted()
@@ -39,6 +39,34 @@ class Sale extends Model
             ->withPivot('price_at_sale');
     }
 
+    public function payments()
+    {
+        return $this->hasMany(SalePayment::class);
+    }
+
+    public function referrer()
+    {
+        return $this->belongsTo(Customer::class, 'referral_customer_id');
+    }
+
+    /** What has been paid so far, across every part. */
+    public function getPaidAttribute(): float
+    {
+        return round((float) ($this->payments_sum_amount ?? $this->payments()->sum('amount')), 2);
+    }
+
+    /** Worked out, never stored: the bill less everything paid. */
+    public function getBalanceAttribute(): float
+    {
+        return round((float) $this->total - $this->paid, 2);
+    }
+
+    /** The bill number staff read: the Tally bill number once verified, else the holding reference. */
+    public function getBillNumberAttribute(): string
+    {
+        return $this->confirmed_by_accountant ? $this->invoice_number : 'Reserved #' . $this->id;
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -49,7 +77,7 @@ class Sale extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['customer_id', 'invoice_number', 'type', 'total', 'confirmed_by_accountant', 'created_by'])
+            ->logOnly(['customer_id', 'invoice_number', 'type', 'total', 'discount', 'confirmed_by_accountant', 'created_by'])
             ->useLogName('sale');
     }
 }

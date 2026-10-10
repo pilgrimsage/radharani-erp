@@ -2,109 +2,356 @@
 namespace App\Livewire\Sales;
 
 use App\Models\Customer\Customer;
-use App\Models\Customer\LoyaltySetting;
-use App\Models\Customer\LoyaltyTransaction;
-use App\Models\Pricing\GstRate;
+use App\Models\Location;
+use App\Models\Orders\Order;
 use App\Models\Sales\Sale;
+use App\Models\Sales\SalePayment;
 use App\Models\Stock\Item;
 use App\Services\PricingService;
+use App\Support\Phone;
+use App\Support\StockLookup;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
- * New Sale / Billing.
+ * New Sale as a step form (8 Oct change list, section 12): Customer, Items, Charges, Payment,
+ * Review. Going back to an earlier step is always possible and the figures follow.
  *
- * sales.invoice_number gets a "RESV-" placeholder here — the real,
- * sequential GST invoice number is assigned by SaleVerificationQueue at
- * verification time (see InvoiceCounter and that component's docblock).
- *
- * items.status now has a 'reserved' value (added alongside 'pending_review'
- * for the same "pending admin verification" purpose used elsewhere). Items
- * added to a sale are flipped to 'reserved' on submit, which is what keeps
- * them out of the `itemResults` search below (scoped to 'in_stock') and
- * therefore unavailable to other staff until SaleVerificationQueue verifies
- * the sale and flips them to 'sold' (or, in future, releases them back to
- * 'in_stock' on a rejected/cancelled sale).
+ * On save the sale is held as 'reserved' until an admin verifies it (rule 10). The bill is paid
+ * in parts if need be; the balance is worked out from the payments and cleared later.
  */
 class NewSale extends Component
 {
+    public const STEPS = [1 => 'Customer', 2 => 'Items', 3 => 'Charges', 4 => 'Payment', 5 => 'Review'];
+
+    public int $step = 1;
+    public int $reach = 1;
+
+    // ---- 1. customer
     public string $customerSearch = '';
     public ?int $customerId = null;
+    public bool $addingCustomer = false;
+    public string $newName = '';
+    public string $newPhone = '';
+    public string $referralCode = '';
+    public ?int $referralCustomerId = null;
 
+    // ---- 2. items: item_id => ['label', 'category', 'price', 'inVault', 'order']
     public string $itemSearch = '';
-    public array $cart = []; // item_id => ['item' => Item, 'price' => float, 'gst' => float]
+    public array $cart = [];
+    public string $overrideNote = '';
 
-    public float $loyaltyPointsUsed = 0;
-    public array $paymentModes = [['mode' => 'cash', 'amount' => 0]];
+    // ---- 3. charges
+    public array $extras = [];            // [['name' => ..., 'amount' => ...]]
+    public string $adjustType = 'flat';   // flat | percent
+    public $adjustValue = '';
 
-    public function addItem(int $itemId)
+    // ---- 4. payment
+    public array $payments = [['mode' => 'cash', 'amount' => '']];
+
+    public string $notes = '';
+
+    // ================================================================ steps
+
+    public function goToStep(int $n): void
     {
-        if (isset($this->cart[$itemId])) return;
-
-        $item = Item::findOrFail($itemId);
-        $price = app(PricingService::class)->priceFor($item);
-        $gstRate = GstRate::forCategory($item->category);
-
-        $this->cart[$itemId] = [
-            'label' => $item->huid_code ?: $item->internal_code,
-            'category' => $item->category,
-            'price' => $price,
-            'gst_rate' => $gstRate,
-        ];
-        $this->itemSearch = '';
+        if ($n >= 1 && $n <= 5 && $n <= $this->reach) {
+            $this->resetValidation();
+            $this->step = $n;
+        }
     }
 
-    // A scanned tag (camera or keyboard + Enter) goes straight onto the bill.
-    public function addByCode(string $raw)
+    public function next(): void
     {
-        $item = \App\Support\StockLookup::item($raw);
+        if (! $this->stepIsValid($this->step)) {
+            return;
+        }
+        $this->step = min(5, $this->step + 1);
+        $this->reach = max($this->reach, $this->step);
+        $this->refreshCart();
+    }
 
+    private function stepIsValid(int $step): bool
+    {
+        $this->resetValidation();
+
+        if ($step === 1 && ! $this->customerId) {
+            $this->addError('customerId', 'Choose the customer, or add a new one.');
+
+            return false;
+        }
+        if ($step === 2) {
+            if (! $this->cart) {
+                $this->addError('cart', 'Add at least one piece.');
+
+                return false;
+            }
+            $this->refreshCart();
+            if (collect($this->cart)->contains('inVault', true)) {
+                $this->addError('cart', 'Some pieces are still recorded as in the vault. Move them to the counter first.');
+
+                return false;
+            }
+            if (collect($this->cart)->contains(fn ($c) => $c['order'] !== null) && ! $this->canOverride()) {
+                $this->addError('cart', 'A piece is held for a customer order. An admin has to approve selling it.');
+
+                return false;
+            }
+            if (collect($this->cart)->contains(fn ($c) => $c['order'] !== null) && trim($this->overrideNote) === '') {
+                $this->addError('overrideNote', 'Say why a piece held for an order is being sold.');
+
+                return false;
+            }
+        }
+        if ($step === 3) {
+            foreach ($this->extras as $i => $e) {
+                if (($e['name'] ?? '') === '' && ($e['amount'] ?? '') === '') {
+                    continue;
+                }
+                if (($e['name'] ?? '') === '' || ! is_numeric($e['amount'] ?? null) || (float) $e['amount'] <= 0) {
+                    $this->addError("extras.{$i}.amount", 'Give each extra charge a name and an amount.');
+
+                    return false;
+                }
+            }
+            if ($this->adjustValue !== '' && (! is_numeric($this->adjustValue) || (float) $this->adjustValue < 0 || ($this->adjustType === 'percent' && (float) $this->adjustValue > 100))) {
+                $this->addError('adjustValue', $this->adjustType === 'percent' ? 'Enter a percentage between 0 and 100.' : 'Enter an amount.');
+
+                return false;
+            }
+        }
+        if ($step === 4) {
+            foreach ($this->payments as $i => $p) {
+                if (($p['amount'] ?? '') !== '' && (! is_numeric($p['amount']) || (float) $p['amount'] < 0)) {
+                    $this->addError("payments.{$i}.amount", 'Enter an amount.');
+
+                    return false;
+                }
+            }
+            if ($this->paidTotal > $this->total + 0.005) {
+                $this->addError('payments', 'The payments add up to more than the bill.');
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // ================================================================ 1. customer
+
+    public function chooseCustomer(int $id): void
+    {
+        $this->customerId = $id;
+        $this->customerSearch = '';
+        $this->addingCustomer = false;
+        $this->resetErrorBag('customerId');
+        $this->checkReferral();
+    }
+
+    public function clearCustomer(): void
+    {
+        $this->customerId = null;
+        $this->referralCustomerId = null;
+    }
+
+    public function saveNewCustomer(): void
+    {
+        $this->newPhone = Phone::normalize($this->newPhone);
+        $this->validate([
+            'newName' => ['required', 'string', 'max:100'],
+            'newPhone' => ['required', 'digits:10'],
+        ], ['newPhone.digits' => 'Enter a 10 digit mobile number.', 'newName.required' => 'Enter the customer\'s name.'], ['newName' => 'name', 'newPhone' => 'phone']);
+
+        $existing = Customer::where('phone', $this->newPhone)->first();
+        if ($existing) {
+            $this->chooseCustomer($existing->id);
+            $this->dispatch('toast', message: "{$existing->name} already has this number, so I chose them.", type: 'info');
+            $this->reset(['newName', 'newPhone']);
+
+            return;
+        }
+
+        $c = Customer::create(['name' => $this->newName, 'phone' => $this->newPhone, 'status' => 'past_customer']);
+        $this->reset(['newName', 'newPhone']);
+        $this->chooseCustomer($c->id);
+        $this->dispatch('toast', message: "{$c->name} added.", type: 'success');
+    }
+
+    // A person can not use their own code on their own purchase.
+    public function checkReferral(): void
+    {
+        $this->resetErrorBag('referralCode');
+        $this->referralCustomerId = null;
+        $code = strtoupper(trim($this->referralCode));
+        if ($code === '') {
+            return;
+        }
+        $owner = Customer::where('referral_code', $code)->first();
+        if (! $owner) {
+            $this->addError('referralCode', 'No customer has this referral code.');
+
+            return;
+        }
+        if ($owner->id === $this->customerId) {
+            $this->addError('referralCode', 'A customer can not use their own referral code on their own purchase.');
+
+            return;
+        }
+        $this->referralCustomerId = $owner->id;
+    }
+
+    public function updatedReferralCode(): void
+    {
+        $this->checkReferral();
+    }
+
+    // ================================================================ 2. items
+
+    public function addByCode(string $raw): void
+    {
+        $item = StockLookup::item($raw);
         if (! $item) {
-            // Not an exact code: leave it as a search so the list below can help.
             $this->itemSearch = trim($raw);
+
+            return;
+        }
+        $this->addItem($item->id);
+    }
+
+    public function addItem(int $itemId): void
+    {
+        $item = Item::find($itemId);
+        if (! $item) {
+            return;
+        }
+        $this->itemSearch = '';
+        if (isset($this->cart[$itemId])) {
             return;
         }
         if ($item->status !== 'in_stock') {
-            $this->itemSearch = '';
             $this->dispatch('toast', message: "{$item->label} is " . str_replace('_', ' ', $item->status) . ' and can not be billed.', type: 'error');
+
             return;
         }
 
-        $this->addItem($item->id);
-        $this->dispatch('toast', message: "{$item->label} added to the bill.", type: 'success');
+        $this->cart[$itemId] = $this->cartLine($item);
+        $this->resetErrorBag('cart');
     }
 
-    public function removeItem(int $itemId)
+    private function cartLine(Item $item): array
+    {
+        $order = Order::openForItem($item->id);
+
+        return [
+            'label' => $item->label,
+            'category' => $item->category,
+            'weight' => (float) $item->weight,
+            'price' => app(PricingService::class)->priceFor($item),
+            'inVault' => Location::isInVault($item),
+            'order' => $order ? "Order #{$order->id} for " . ($order->customer?->name ?? 'a customer') : null,
+        ];
+    }
+
+    // Prices and the vault check are read again whenever the screen moves on.
+    private function refreshCart(): void
+    {
+        foreach (Item::whereKey(array_keys($this->cart))->get() as $item) {
+            $this->cart[$item->id] = $this->cartLine($item);
+        }
+    }
+
+    public function removeItem(int $itemId): void
     {
         unset($this->cart[$itemId]);
     }
 
-    public function addPaymentMode()
+    // The offer made when a piece is still recorded as in the vault: move it out to the counter first.
+    public function moveToCounter(int $itemId): void
     {
-        $this->paymentModes[] = ['mode' => 'cash', 'amount' => 0];
+        $item = Item::findOrFail($itemId);
+        abort_unless(Auth::user()?->can('movement.create'), 403);
+        if (Location::isInVault($item)) {
+            Location::sendToFloor($item);
+        }
+        $this->cart[$itemId] = $this->cartLine($item);
+        $this->resetErrorBag('cart');
+        $this->dispatch('toast', message: "{$item->label} moved to the counter.", type: 'success');
     }
+
+    public function canOverride(): bool
+    {
+        return (bool) Auth::user()?->can('sale.approve');
+    }
+
+    // ================================================================ 3 and 4
+
+    public function addExtra(): void
+    {
+        $this->extras[] = ['name' => '', 'amount' => ''];
+    }
+
+    public function removeExtra(int $i): void
+    {
+        unset($this->extras[$i]);
+        $this->extras = array_values($this->extras);
+    }
+
+    public function addPayment(): void
+    {
+        $this->payments[] = ['mode' => 'cash', 'amount' => ''];
+    }
+
+    public function removePayment(int $i): void
+    {
+        unset($this->payments[$i]);
+        $this->payments = array_values($this->payments) ?: [['mode' => 'cash', 'amount' => '']];
+    }
+
+    // One tap to put what is still due on a payment line.
+    public function fillBalance(int $i): void
+    {
+        $others = collect($this->payments)->except($i)->sum(fn ($p) => is_numeric($p['amount'] ?? null) ? (float) $p['amount'] : 0);
+        $this->payments[$i]['amount'] = (string) max(0, round($this->total - $others, 2));
+    }
+
+    // ================================================================ figures
 
     public function getSubtotalProperty(): float
     {
         return round(collect($this->cart)->sum('price'), 2);
     }
 
-    public function getGstTotalProperty(): float
+    public function getExtrasTotalProperty(): float
     {
-        return round(collect($this->cart)->sum(fn ($c) => $c['price'] * $c['gst_rate'] / 100), 2);
+        return round(collect($this->extras)->sum(fn ($e) => is_numeric($e['amount'] ?? null) && ($e['name'] ?? '') !== '' ? (float) $e['amount'] : 0), 2);
     }
 
-    public function getLoyaltyDiscountProperty(): float
+    // The adjustment is a flat amount or a percentage of the bill. It needs no approval.
+    public function getAdjustmentProperty(): float
     {
-        $settings = LoyaltySetting::current();
-        $points = min($this->loyaltyPointsUsed, $this->customerObject?->loyalty_points ?? 0);
-        if ($points < $settings->min_redeemable_points) return 0;
-        return round($points * $settings->point_value_in_rupees, 2);
+        $base = $this->subtotal + $this->extrasTotal;
+        $v = is_numeric($this->adjustValue) ? (float) $this->adjustValue : 0.0;
+        $amount = $this->adjustType === 'percent' ? $base * min(100, $v) / 100 : $v;
+
+        return round(min($base, max(0, $amount)), 2);
     }
 
-    public function getGrandTotalProperty(): float
+    public function getTotalProperty(): float
     {
-        return max(0, round($this->subtotal + $this->gstTotal - $this->loyaltyDiscount, 2));
+        return round($this->subtotal + $this->extrasTotal - $this->adjustment, 2);
+    }
+
+    public function getPaidTotalProperty(): float
+    {
+        return round(collect($this->payments)->sum(fn ($p) => is_numeric($p['amount'] ?? null) ? (float) $p['amount'] : 0), 2);
+    }
+
+    public function getBalanceProperty(): float
+    {
+        return round($this->total - $this->paidTotal, 2);
     }
 
     public function getCustomerObjectProperty()
@@ -112,76 +359,92 @@ class NewSale extends Component
         return $this->customerId ? Customer::find($this->customerId) : null;
     }
 
+    // ================================================================ save
+
     public function submit()
     {
         abort_unless(Auth::user()?->can('sale.create'), 403);
 
-        $this->validate([
-            'customerId' => 'required|exists:customers,id',
-        ]);
-        if (empty($this->cart)) {
-            $this->addError('cart', 'Add at least one item.');
+        foreach ([1, 2, 3, 4] as $s) {
+            if (! $this->stepIsValid($s)) {
+                $this->step = $s;
+
+                return;
+            }
+        }
+
+        // Pieces may have been taken meanwhile: only pieces still in stock can be held for a sale.
+        $items = Item::whereKey(array_keys($this->cart))->where('status', 'in_stock')->get();
+        if ($items->count() !== count($this->cart)) {
+            $this->step = 2;
+            $this->addError('cart', 'A piece on this bill is no longer in stock. Remove it and try again.');
+            $this->refreshCart();
+
             return;
         }
 
-        $sale = Sale::create([
-            'customer_id' => $this->customerId,
-            'invoice_number' => 'RESV-' . now()->format('YmdHis') . '-' . $this->customerId,
-            'type' => 'sale',
-            'cgst' => round($this->gstTotal / 2, 2),
-            'sgst' => round($this->gstTotal / 2, 2),
-            'igst' => 0,
-            'discount' => $this->loyaltyDiscount,
-            'payment_modes' => $this->paymentModes,
-            'total' => $this->grandTotal,
-            'confirmed_by_accountant' => false,
-            'created_by' => Auth::id(),
-        ]);
+        $pricing = app(PricingService::class);
+        $extras = collect($this->extras)->filter(fn ($e) => ($e['name'] ?? '') !== '' && is_numeric($e['amount'] ?? null))
+            ->map(fn ($e) => ['name' => $e['name'], 'amount' => round((float) $e['amount'], 2)])->values()->all();
 
-        foreach ($this->cart as $itemId => $line) {
-            $sale->items()->attach($itemId, ['price_at_sale' => $line['price']]);
-        }
+        $sale = DB::transaction(function () use ($items, $pricing, $extras) {
+            $prices = $items->mapWithKeys(fn ($i) => [$i->id => $pricing->priceFor($i)]);
+            $subtotal = round($prices->sum(), 2);
+            $base = $subtotal + round(array_sum(array_column($extras, 'amount')), 2);
+            $v = is_numeric($this->adjustValue) ? (float) $this->adjustValue : 0.0;
+            $adjustment = round(min($base, max(0, $this->adjustType === 'percent' ? $base * min(100, $v) / 100 : $v)), 2);
 
-        // Reserve the items now — they stay out of live availability from
-        // this point, but only become 'sold' once an admin verifies the
-        // sale in SaleVerificationQueue. Per-item update (not a mass
-        // whereIn) so each item's own activity-log timeline picks this up.
-        Item::whereKey(array_keys($this->cart))->get()->each(fn ($item) => $item->update(['status' => 'reserved']));
-
-        // Points actually redeemed on this sale (loyaltyDiscount already
-        // floors this against min_redeemable_points) — log the debit and
-        // apply it to the customer's balance. This was previously computed
-        // for the discount but never actually deducted anywhere, which
-        // would have let points be re-used on the next sale — fixed here
-        // while building the Loyalty Points Ledger, since both read the
-        // same loyalty_transactions table.
-        $redeemedPoints = min($this->loyaltyPointsUsed, $this->customerObject?->loyalty_points ?? 0);
-        if ($this->loyaltyDiscount > 0 && $redeemedPoints > 0) {
-            LoyaltyTransaction::create([
+            $sale = Sale::create([
                 'customer_id' => $this->customerId,
-                'points' => -$redeemedPoints,
-                'reason' => 'redeemed on sale',
-                'related_sale_id' => $sale->id,
+                'referral_customer_id' => $this->referralCustomerId,
+                'invoice_number' => 'RESV-' . now()->format('YmdHis') . '-' . $this->customerId, // the Tally bill number replaces it at verification
+                'type' => 'sale',
+                'cgst' => 0, 'sgst' => 0, 'igst' => 0,
+                'additional_charges' => $extras ?: null,
+                'discount' => $adjustment,
+                'adjustment_type' => $adjustment > 0 ? $this->adjustType : null,
+                'adjustment_value' => $adjustment > 0 ? $v : null,
+                'accountant_note' => trim($this->notes) ?: null,
+                'order_override_note' => collect($this->cart)->contains(fn ($c) => $c['order'] !== null) ? trim($this->overrideNote) : null,
+                'total' => round($base - $adjustment, 2),
+                'confirmed_by_accountant' => false,
+                'created_by' => Auth::id(),
             ]);
-            Customer::whereKey($this->customerId)->decrement('loyalty_points', $redeemedPoints);
-        }
 
-        $this->dispatch('toast', message: "Sale #{$sale->id} reserved — awaiting admin verification before it becomes final.", type: 'success');
-        $this->reset(['customerId', 'customerSearch', 'cart', 'loyaltyPointsUsed', 'paymentModes']);
-        $this->paymentModes = [['mode' => 'cash', 'amount' => 0]];
+            foreach ($items as $item) {
+                $sale->items()->attach($item->id, ['price_at_sale' => $prices[$item->id]]);
+                $item->update(['status' => 'reserved']); // per item, so each piece's history shows it
+            }
+
+            foreach ($this->payments as $p) {
+                if (is_numeric($p['amount'] ?? null) && (float) $p['amount'] > 0) {
+                    SalePayment::create(['sale_id' => $sale->id, 'mode' => $p['mode'], 'amount' => round((float) $p['amount'], 2), 'user_id' => Auth::id()]);
+                }
+            }
+
+            return $sale;
+        });
+
+        session()->flash('toast', "Sale #{$sale->id} is held until an admin verifies it.");
+
+        return $this->redirectRoute('sales.invoice', $sale);
     }
 
     public function render()
     {
         return view('livewire.sales.new-sale', [
-            'customerResults' => $this->customerSearch
+            'steps' => self::STEPS,
+            'customer' => $this->customerObject,
+            'referrer' => $this->referralCustomerId ? Customer::find($this->referralCustomerId) : null,
+            'customerResults' => $this->customerSearch !== ''
                 ? Customer::where('name', 'like', "%{$this->customerSearch}%")->orWhere('phone', 'like', "%{$this->customerSearch}%")->limit(8)->get()
                 : collect(),
-            'itemResults' => $this->itemSearch
-                ? Item::where('status', 'in_stock')
-                    ->where(fn ($q) => $q->where('huid_code', 'like', "%{$this->itemSearch}%")->orWhere('internal_code', 'like', "%{$this->itemSearch}%")->orWhere('category', 'like', "%{$this->itemSearch}%"))
-                    ->limit(8)->get()
+            'itemResults' => $this->itemSearch !== ''
+                ? Item::where('status', 'in_stock')->whereNotIn('id', array_keys($this->cart))->searchAnything($this->itemSearch)->limit(8)->get()
                 : collect(),
+            'modes' => SalePayment::MODES,
+            'canOverride' => $this->canOverride(),
+            'hasOrderWarning' => collect($this->cart)->contains(fn ($c) => $c['order'] !== null),
         ])->layout('components.layouts.app', ['title' => 'New Sale — Radharani Jewellery']);
     }
 }

@@ -30,6 +30,13 @@ class Order extends Model
             ->useLogName('order');
     }
 
+    /** An order still open against this piece (customers often leave an advance on a stock item). */
+    public static function openForItem(int $itemId): ?self
+    {
+        return static::with('customer:id,name')->where('in_stock_item_id', $itemId)
+            ->whereIn('status', ['placed', 'confirmed', 'ready'])->latest('id')->first();
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);

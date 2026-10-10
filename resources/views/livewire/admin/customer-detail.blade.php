@@ -9,7 +9,7 @@
     </div>
 
     <div class="rj-segment mb-5">
-        @foreach (['purchases' => 'Purchase History', 'orders' => 'Current Orders', 'installments' => 'Installment Scheme'] as $key => $label)
+        @foreach (['purchases' => 'Purchase History', 'ledger' => 'Ledger', 'orders' => 'Current Orders', 'installments' => 'Installment Scheme'] as $key => $label)
             <button type="button" wire:click="setTab('{{ $key }}')" class="{{ $tab === $key ? 'is-active' : '' }}">{{ $label }}</button>
         @endforeach
     </div>
@@ -20,7 +20,7 @@
                 @forelse ($sales as $sale)
                     <tr class="h-[56px] border-b border-line-light">
                         <td class="px-4">
-                            <a href="{{ route('sales.invoice', $sale) }}" wire:navigate class="text-gold font-semibold rj-code">{{ $sale->invoice_number }}</a>
+                            <a href="{{ route('sales.invoice', $sale) }}" wire:navigate class="text-gold font-semibold rj-code">{{ $sale->confirmed_by_accountant ? $sale->invoice_number : '#' . $sale->id }}</a>
                         </td>
                         <td class="px-4 text-ink_text-primary">{{ $sale->created_at?->format('d M Y') }}</td>
                         <td class="px-4 tabular text-ink_text-primary">{{ $sale->items->count() }}</td>
@@ -40,6 +40,24 @@
                         </td>
                     </tr>
                 @endforelse
+            </x-ui.table>
+        </x-ui.card>
+    @endif
+
+    @if ($tab === 'ledger')
+        <x-ui.card :padding="false" title="Ledger" subtitle="What was billed, what was paid, and what is still due." icon="book" class="overflow-hidden">
+            <x-slot:actions>
+                <x-ui.button variant="secondary" size="sm" icon="download" :href="route('ledgers.customer.download', [$customer, 'xlsx'])">Excel</x-ui.button>
+                <x-ui.button size="sm" icon="download" :href="route('ledgers.customer.download', [$customer, 'pdf'])">PDF</x-ui.button>
+            </x-slot:actions>
+            <x-ui.table :headers="$ledger['columns']">
+                @forelse ($ledger['rows'] as $r)
+                    <tr><td class="whitespace-nowrap text-ink_text-secondary">{{ $r['at']->format('j M Y, g:i a') }}</td><td>{{ $r['label'] }}</td>
+                        <td class="tabular">{{ $r['cells'][0] ? number_format($r['cells'][0], 2) : '' }}</td><td class="tabular">{{ $r['cells'][1] ? number_format($r['cells'][1], 2) : '' }}</td><td class="tabular font-semibold">{{ number_format($r['cells'][2], 2) }}</td></tr>
+                @empty
+                    <tr><td colspan="5"><x-ui.empty-state icon="book" title="No sales yet" compact /></td></tr>
+                @endforelse
+                @if ($ledger['rows']->isNotEmpty())<tr class="font-semibold bg-surface-sunken"><td colspan="2">Total</td><td class="tabular">{{ number_format($ledger['totals'][0], 2) }}</td><td class="tabular">{{ number_format($ledger['totals'][1], 2) }}</td><td class="tabular">{{ number_format($ledger['totals'][2], 2) }}</td></tr>@endif
             </x-ui.table>
         </x-ui.card>
     @endif

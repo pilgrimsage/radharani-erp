@@ -51,6 +51,45 @@ class Location extends Model
     }
 
     /**
+     * Is this piece recorded as in the vault? The latest vault movement of the piece itself decides,
+     * else that of its packet, else its box; no movement at all means it never left the vault.
+     */
+    public static function isInVault(Item $item): bool
+    {
+        $chain = collect([['item', $item->id]]);
+        if ($item->packet_id) {
+            $chain->push(['packet', $item->packet_id]);
+            if ($boxId = Packet::withTrashed()->whereKey($item->packet_id)->value('box_id')) {
+                $chain->push(['box', $boxId]);
+            }
+        }
+
+        foreach ($chain as [$type, $id]) {
+            $last = Movement::where('trackable_type', $type)->where('trackable_id', $id)
+                ->whereIn('movement_type', Movement::PAIRS['vault'])->latest('id')->first();
+            if ($last) {
+                return $last->movement_type === 'vault_in';
+            }
+        }
+
+        return true;
+    }
+
+    /** Record a piece as moved from the vault to the counter (the first counter unless told otherwise). */
+    public static function sendToFloor(Item $item, ?int $locationId = null): Movement
+    {
+        return Movement::create([
+            'trackable_type' => 'item',
+            'trackable_id' => $item->id,
+            'movement_type' => 'vault_out',
+            'location_id' => $locationId ?? static::defaultFloor()?->id,
+            'purpose_label' => 'Counter display',
+            'user_id' => \Illuminate\Support\Facades\Auth::id(),
+            'weight_at_dispatch' => (float) $item->weight,
+        ]);
+    }
+
+    /**
      * Who is out of the vault right now and where: latest vault-pair movement per
      * box / packet / piece that is a vault_out. Keyed "type:id".
      *

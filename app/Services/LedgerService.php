@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Models\Customer\Customer;
 use App\Models\Movement\KarigarPayment;
 use App\Models\Movement\KarigarRawBatch;
 use App\Models\Purchase\Vendor;
@@ -68,6 +69,36 @@ class LedgerService
             'rows' => $rows->sortBy(fn ($r) => $r['at']->timestamp)->values(),
             'totals' => [$tot['out'], $tot['in'], $tot['issued'], $tot['received'], $tot['loss'], $tot['paid'], $tot['balance']],
         ];
+    }
+
+    /**
+     * A customer's ledger (8 Oct change list, 14.1): what they were billed, what they paid and what is
+     * still due, oldest first. Unlike the karigar and hallmarker ledgers this one is money.
+     */
+    public function forCustomer(Customer $customer): array
+    {
+        $rows = collect();
+        $billed = 0.0;
+        $paid = 0.0;
+        $running = 0.0;
+
+        $sales = $customer->sales()->with('payments')->orderBy('id')->get();
+        $events = collect();
+        foreach ($sales as $sale) {
+            $events->push(['at' => $sale->created_at, 'label' => 'Sale ' . $sale->bill_number . ' (' . $sale->items()->count() . ' ' . \Illuminate\Support\Str::plural('piece', $sale->items()->count()) . ')', 'billed' => (float) $sale->total, 'paid' => 0.0]);
+            foreach ($sale->payments as $p) {
+                $events->push(['at' => $p->created_at, 'label' => 'Paid by ' . \App\Models\Sales\SalePayment::MODES[$p->mode] . ' for ' . $sale->bill_number, 'billed' => 0.0, 'paid' => (float) $p->amount]);
+            }
+        }
+
+        foreach ($events->sortBy(fn ($e) => $e['at']->timestamp)->values() as $e) {
+            $running += $e['billed'] - $e['paid'];
+            $billed += $e['billed'];
+            $paid += $e['paid'];
+            $rows->push(['at' => $e['at'], 'label' => $e['label'], 'cells' => [$e['billed'], $e['paid'], round($running, 2)]]);
+        }
+
+        return ['columns' => ['Date', 'Description', 'Billed (₹)', 'Paid (₹)', 'Balance (₹)'], 'rows' => $rows, 'totals' => [round($billed, 2), round($paid, 2), round($billed - $paid, 2)]];
     }
 
     // Filled in with the hallmarking rebuild (section 7).

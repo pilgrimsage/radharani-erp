@@ -73,11 +73,13 @@ class MessageTemplates
 
     public static function saleConfirmation(Sale $sale): string
     {
-        $paid = self::paymentText($sale->payment_modes);
+        $parts = $sale->exists ? $sale->payments->map(fn ($p) => ['mode' => $p->mode, 'amount' => $p->amount])->all() : [];
+        $paid = self::paymentText($parts ?: $sale->payment_modes);
         $review = config('shop.review_link');
 
         return "Thank you for your purchase from Radharani Jewellery Works. Your bill of ₹" . number_format((float) $sale->total) . ' is confirmed'
             . ($paid ? ", received as {$paid}." : '.')
+            . ($sale->exists && $sale->balance > 0 ? ' Balance to pay: ₹' . number_format($sale->balance) . '.' : '')
             . ($review ? " We would love your review: {$review}" : '');
     }
 

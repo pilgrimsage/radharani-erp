@@ -7,7 +7,7 @@
 </style></head><body>
 @php $fmt = fn ($v) => $v === null ? '' : (is_float($v) ? number_format($v, 3) : $v); @endphp
 <h1>{{ $party->name }}</h1>
-<div class="sub">{{ $party->type === 'karigar' ? 'Karigar' : 'Hallmarking centre' }} ledger · Radharani Jewellery Works · {{ now()->format('j M Y, g:i a') }}</div>
+<div class="sub">{{ ['karigar' => 'Karigar', 'hallmark_center' => 'Hallmarking centre'][$party->type ?? ''] ?? 'Customer' }} ledger · Radharani Jewellery Works · {{ now()->format('j M Y, g:i a') }}</div>
 <table>
   <thead><tr>@foreach ($ledger['columns'] as $i => $c)<th class="{{ $i > 1 ? 'n' : '' }}">{{ $c }}</th>@endforeach</tr></thead>
   <tbody>
