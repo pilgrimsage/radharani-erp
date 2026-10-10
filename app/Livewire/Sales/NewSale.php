@@ -13,6 +13,7 @@ use App\Support\StockLookup;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -28,6 +29,11 @@ class NewSale extends Component
 
     public int $step = 1;
     public int $reach = 1;
+
+    // The order this sale delivers, when the sale is started from an order's path.
+    #[Url(as: 'order', except: '')]
+    public ?int $orderId = null;
+
 
     // ---- 1. customer
     public string $customerSearch = '';
@@ -52,6 +58,29 @@ class NewSale extends Component
     public array $payments = [['mode' => 'cash', 'amount' => '']];
 
     public string $notes = '';
+
+    public function mount(): void
+    {
+        if (! $this->orderId) {
+            return;
+        }
+        $order = Order::with('customer', 'stockItem')->whereIn('status', ['placed', 'confirmed', 'ready'])->find($this->orderId);
+        if (! $order) {
+            $this->orderId = null;
+
+            return;
+        }
+        $this->customerId = $order->customer_id;
+        $this->reach = 2;
+        $this->step = 2;
+        // The advance already paid on the order counts towards this bill. Staff set the mode it was paid in.
+        if ((float) $order->advance_amount > 0) {
+            $this->payments = [['mode' => 'cash', 'amount' => (string) (float) $order->advance_amount, 'note' => "Advance paid on order #{$order->id}"]];
+        }
+        if ($order->stockItem && $order->stockItem->status === 'in_stock') {
+            $this->cart[$order->stockItem->id] = $this->cartLine($order->stockItem);
+        }
+    }
 
     // ================================================================ steps
 
@@ -244,6 +273,9 @@ class NewSale extends Component
     private function cartLine(Item $item): array
     {
         $order = Order::openForItem($item->id);
+        if ($order && $this->orderId && $order->id === $this->orderId) {
+            $order = null; // selling it to the customer it is held for
+        }
 
         return [
             'label' => $item->label,
@@ -418,8 +450,13 @@ class NewSale extends Component
 
             foreach ($this->payments as $p) {
                 if (is_numeric($p['amount'] ?? null) && (float) $p['amount'] > 0) {
-                    SalePayment::create(['sale_id' => $sale->id, 'mode' => $p['mode'], 'amount' => round((float) $p['amount'], 2), 'user_id' => Auth::id()]);
+                    SalePayment::create(['sale_id' => $sale->id, 'mode' => $p['mode'], 'amount' => round((float) $p['amount'], 2), 'note' => $p['note'] ?? null, 'user_id' => Auth::id()]);
                 }
+            }
+
+            // Link the order: it is delivered once an admin verifies this sale.
+            if ($this->orderId && ($order = Order::find($this->orderId))) {
+                $order->update(['converted_sale_id' => $sale->id]);
             }
 
             return $sale;

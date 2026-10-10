@@ -47,6 +47,7 @@ class KarigarDesk extends Component
     public $advanceCash = '';
     public $advanceMetalWeight = '';
     public string $advanceMetalPurity = '';
+    #[Url(as: 'order', except: '')]
     public ?int $orderId = null;
 
     // ---- receive
@@ -295,6 +296,11 @@ class KarigarDesk extends Component
         $msg = "{$pieces} " . \Illuminate\Support\Str::plural('piece', $pieces) . ' received from ' . $batch->vendor->name . '.';
         $msg .= $batch->is_open ? " {$batch->pieces_pending} still pending." : ' Batch complete.';
         $this->dispatch('toast', message: $msg, type: 'success');
+
+        // The customer of an order is told when work for it comes back (copy and send, never automatic).
+        if ($batch->order_id && ($order = Order::with('customer')->find($batch->order_id))) {
+            \App\Support\MessageTemplates::queue('order_from_karigar', $order->customer, \App\Support\MessageTemplates::orderFromKarigar($order), 'order', $order->id);
+        }
 
         $this->reset(['weights', 'hallmarkPieces', 'hallmarkWeight', 'lossWeight', 'receiveNote', 'photo']);
         if (! $batch->is_open) {

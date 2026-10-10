@@ -73,6 +73,34 @@
                 </div>
             @endif
 
+            @php
+                $stepLabels = ['karigar' => 'Karigar', 'hallmark' => 'Hallmarking', 'sales' => 'Sales'];
+                $stepLinks = ['karigar' => route('movements.karigar', ['tab' => 'issue', 'order' => $o->id]), 'hallmark' => route('movements.hallmark', ['tab' => 'dispatch', 'order' => $o->id]), 'sales' => route('sales.new', ['order' => $o->id])];
+                $stepTone = ['todo' => 'neutral', 'doing' => 'warning', 'done' => 'success'];
+            @endphp
+            <x-ui.card :title="'Path: ' . \App\Models\Orders\Order::SOURCING[$o->sourcing][0]" subtitle="Each step links to its screen with this order already chosen" icon="repeat">
+                <ol class="space-y-2.5">
+                    @foreach ($o->pathSteps() as $st)
+                        <li class="flex items-center gap-3 p-3.5 rounded-xl ring-1 ring-inset ring-line-light">
+                            <span class="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold {{ $st['status'] === 'done' ? 'bg-success-bg text-success' : 'bg-surface-muted text-ink_text-muted' }}">@if ($st['status'] === 'done')<x-ui.icon name="check" :size="13" />@else{{ $loop->iteration }}@endif</span>
+                            <div class="flex-1"><div class="font-semibold text-ink_text-primary">{{ $stepLabels[$st['step']] }}</div><div class="text-[12.5px] text-ink_text-muted">{{ $st['detail'] }}</div></div>
+                            <x-ui.badge size="sm" :tone="$stepTone[$st['status']]">{{ ['todo' => 'To do', 'doing' => 'In progress', 'done' => 'Done'][$st['status']] }}</x-ui.badge>
+                            @if ($st['status'] !== 'done' && ! in_array($o->status, ['delivered', 'cancelled']))
+                                <x-ui.button variant="secondary" size="sm" iconRight="arrow-right" :href="$stepLinks[$st['step']]">Open</x-ui.button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ol>
+            </x-ui.card>
+
+            @if ($o->images->isNotEmpty())
+                <x-ui.card title="Reference images" icon="image">
+                    <div class="flex flex-wrap gap-3">
+                        @foreach ($o->images as $img)@if ($img->url)<a href="{{ $img->url }}" target="_blank"><img src="{{ $img->url }}" alt="Reference" class="w-28 h-28 rounded-xl object-cover ring-1 ring-line"></a>@endif @endforeach
+                    </div>
+                </x-ui.card>
+            @endif
+
             <x-ui.card title="History" subtitle="Every stage this order has actually moved through" icon="history">
                 <x-ui.timeline :events="$this->timeline" />
             </x-ui.card>

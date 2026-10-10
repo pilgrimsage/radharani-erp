@@ -12,7 +12,7 @@ class OrderDetail extends Component
 
     public function mount(Order $order)
     {
-        $this->order = $order->load('customer', 'stockItem', 'convertedSale', 'creator');
+        $this->order = $order->load('customer', 'stockItem', 'convertedSale', 'creator', 'images', 'karigarBatches', 'hallmarkBatches');
     }
 
     public function confirm()

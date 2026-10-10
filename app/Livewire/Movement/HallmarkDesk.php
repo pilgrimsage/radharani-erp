@@ -39,6 +39,8 @@ class HallmarkDesk extends Component
     // ---- dispatch
     public ?int $centreId = null;
     public string $source = 'stock'; // stock | order
+
+    #[Url(as: 'order', except: '')]
     public ?int $orderId = null;
     public string $description = '';
     public $piecesCounted = '';
@@ -72,6 +74,11 @@ class HallmarkDesk extends Component
         $this->expectedReturn = today()->addDays(3)->toDateString();
         $centres = Vendor::where('type', 'hallmark_center')->pluck('id');
         $this->centreId = $centres->count() === 1 ? $centres->first() : null;
+        if ($this->orderId && Order::whereKey($this->orderId)->exists()) {
+            $this->source = 'order'; // arrived from an order's path
+        } else {
+            $this->orderId = null;
+        }
     }
 
     protected function pickableStatuses(): array
@@ -185,6 +192,9 @@ class HallmarkDesk extends Component
         });
 
         $this->dispatch('toast', message: "{$total} " . \Illuminate\Support\Str::plural('piece', $total) . " sent to {$centre->name}.", type: 'success');
+        if ($batch->order_id && ($order = Order::with('customer')->find($batch->order_id))) {
+            \App\Support\MessageTemplates::queue('order_to_hallmarking', $order->customer, \App\Support\MessageTemplates::orderToHallmarking($order), 'order', $order->id);
+        }
         $this->reset(['description', 'piecesCounted', 'weightCounted', 'huidExpected', 'karigarReceiptIds', 'basket', 'note', 'photo', 'orderId']);
     }
 
