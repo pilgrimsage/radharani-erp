@@ -11,6 +11,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One pricing service per request, so the active rules are read once.
+        $this->app->scoped(\App\Services\PricingService::class);
+
         //
     }
 

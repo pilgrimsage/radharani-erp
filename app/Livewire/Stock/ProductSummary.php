@@ -65,12 +65,12 @@ class ProductSummary extends Component
         }
     }
 
-    private function key(string $dim, Item $item, array $rates): string
+    private function key(string $dim, Item $item, array &$rates): string
     {
         return match ($dim) {
             'category' => $item->category ?: 'No category',
             'carat' => $item->purity ?: 'No purity',
-            'price' => $this->band(((float) ($item->net_weight ?: $item->weight)) * ($rates[$item->metal ?? 'gold'] ?? 0)),
+            'price' => $this->band(((float) ($item->net_weight ?: $item->weight)) * ($rates[($item->metal ?? 'gold') . '|' . strtoupper(trim((string) $item->purity))] ??= RateLog::rateFor($item->metal ?? 'gold', $item->purity))),
         };
     }
 
@@ -86,7 +86,7 @@ class ProductSummary extends Component
     }
 
     /** Nested groups: each node has label, pieces, weight, children. */
-    private function tree(Collection $items, array $dims, array $rates): Collection
+    private function tree(Collection $items, array $dims, array &$rates): Collection
     {
         if (! $dims) {
             return collect();
@@ -117,10 +117,7 @@ class ProductSummary extends Component
 
     public function render()
     {
-        $rates = [];
-        foreach (['gold', 'silver', 'platinum', 'titanium'] as $m) {
-            $rates[$m] = (float) (RateLog::latestFor($m)?->rate ?? 0);
-        }
+        $rates = []; // metal|carat => rate, filled as pieces are grouped
 
         $all = Item::whereNotIn('status', ['sold'])->get(['id', 'metal', 'category', 'purity', 'weight', 'net_weight']);
         $metals = $all->groupBy(fn ($i) => $i->metal ?? 'gold');

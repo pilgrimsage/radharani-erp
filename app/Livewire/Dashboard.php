@@ -76,7 +76,10 @@ class Dashboard extends Component
     {
         return collect(['gold', 'silver', 'platinum', 'titanium'])
             ->map(function ($metal) {
-                $logs = RateLog::where('metal', $metal)->latest('created_at')->latest('id')->limit(2)->get();
+                $head = RateLog::headline($metal);
+                $logs = $head
+                    ? RateLog::where('metal', $metal)->where('purity', $head->purity)->latest('created_at')->latest('id')->limit(2)->get()
+                    : collect();
                 if ($logs->isEmpty()) {
                     return null;
                 }

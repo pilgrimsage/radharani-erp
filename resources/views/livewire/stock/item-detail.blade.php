@@ -138,8 +138,11 @@
                             <div class="flex justify-between"><span class="text-ink_text-secondary">Stones</span><span class="tabular">₹{{ number_format($price['stone_value'], 2) }}</span></div>
                         @endif
                         @if ($price['huid_charge'])
-                            <div class="flex justify-between"><span class="text-ink_text-secondary">HUID charge</span><span class="tabular">₹{{ number_format($price['huid_charge'], 2) }}</span></div>
+                            <div class="flex justify-between"><span class="text-ink_text-secondary">Hallmarking charge</span><span class="tabular">₹{{ number_format($price['huid_charge'], 2) }}</span></div>
                         @endif
+                        @foreach ($price['additional_lines'] as $line)
+                            <div class="flex justify-between"><span class="text-ink_text-secondary">{{ $line['name'] }}</span><span class="tabular">₹{{ number_format($line['amount'], 2) }}</span></div>
+                        @endforeach
                         @if ($price['discount'] > 0)
                             <div class="flex justify-between text-success"><span>Discount ({{ $price['discount_rule']->scope }} rule)</span><span class="tabular">-₹{{ number_format($price['discount'], 2) }}</span></div>
                         @endif

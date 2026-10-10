@@ -21,7 +21,6 @@ class PriceSimulator extends Component
     public string $making_type = 'percentage';
     public $making_value = '12';
     public $stone_value = '';
-    public bool $hallmarked = true;
 
     public function updatedMetal(): void
     {
@@ -42,7 +41,6 @@ class PriceSimulator extends Component
                 'making_type' => $this->making_type,
                 'making_value' => is_numeric($this->making_value) ? (float) $this->making_value : 0,
                 'stone_value' => is_numeric($this->stone_value) ? (float) $this->stone_value : 0,
-                'huid_code' => $this->hallmarked ? 'SIMULATED' : null,
             ]);
             $result = $pricing->breakdown($draft);
         }

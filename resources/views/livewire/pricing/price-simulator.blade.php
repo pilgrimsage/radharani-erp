@@ -46,26 +46,26 @@
                 <x-ui.field label="Stone value (₹)" for="ps-stone" optional>
                     <input id="ps-stone" type="number" step="0.01" min="0" wire:model.live.debounce.300ms="stone_value" class="rj-input tabular">
                 </x-ui.field>
-                <label class="flex items-center gap-2.5 text-[13px]"><input type="checkbox" wire:model.live="hallmarked" class="rj-checkbox"> Hallmarked (adds the hallmarking charge)</label>
             </div>
         </x-ui.card>
 
         <x-ui.card title="The price" icon="coins" class="xl:sticky xl:top-24">
             @if ($result)
                 @if ($result['rate'] <= 0)
-                    <div class="mb-3 px-3.5 py-2.5 rounded-control bg-warning-bg text-warning text-[12.5px]">No rate is set for {{ ucfirst($metal) }}, so the metal value is 0.</div>
+                    <div class="mb-3 px-3.5 py-2.5 rounded-control bg-warning-bg text-warning text-[12.5px]">No rate is set for {{ ucfirst($metal) }} {{ $purity }}, so the metal value is 0.</div>
                 @endif
                 <dl class="space-y-2.5 text-[13.5px]">
-                    <div class="flex justify-between"><dt class="text-ink_text-secondary">{{ ucfirst($metal) }} rate today</dt><dd class="tabular">₹{{ number_format($result['rate'], 2) }} / g</dd></div>
+                    <div class="flex justify-between"><dt class="text-ink_text-secondary">{{ ucfirst($metal) }} {{ $purity }} rate today</dt><dd class="tabular">₹{{ number_format($result['rate'], 2) }} / g</dd></div>
                     <div class="flex justify-between"><dt class="text-ink_text-secondary">Weight charged</dt><dd class="tabular">{{ number_format($result['weight'], 3) }} g</dd></div>
                     <div class="flex justify-between font-semibold"><dt>Metal value</dt><dd class="tabular">₹{{ number_format($result['metal_value'], 2) }}</dd></div>
                     <div class="flex justify-between"><dt class="text-ink_text-secondary">Making charge</dt><dd class="tabular">₹{{ number_format($result['making'], 2) }}</dd></div>
                     @if ($result['stone_value'] > 0)<div class="flex justify-between"><dt class="text-ink_text-secondary">Stones</dt><dd class="tabular">₹{{ number_format($result['stone_value'], 2) }}</dd></div>@endif
                     <div class="flex justify-between"><dt class="text-ink_text-secondary">Hallmarking charge</dt><dd class="tabular">₹{{ number_format($result['huid_charge'], 2) }}</dd></div>
+                    @foreach ($result['additional_lines'] as $line)<div class="flex justify-between"><dt class="text-ink_text-secondary">{{ $line['name'] }}</dt><dd class="tabular">₹{{ number_format($line['amount'], 2) }}</dd></div>@endforeach
                     @if ($result['discount'] > 0)<div class="flex justify-between text-success"><dt>Discount</dt><dd class="tabular">- ₹{{ number_format($result['discount'], 2) }}</dd></div>@endif
                     <div class="flex justify-between pt-3 border-t border-line-light font-display text-[26px] font-semibold"><dt>Total</dt><dd class="tabular">₹{{ number_format($result['total'], 2) }}</dd></div>
                 </dl>
-                <p class="rj-help mt-4">Provisional: this follows the current pricing rules and will change when the rule bands and per-carat rates are in.</p>
+                <p class="rj-help mt-4">Provisional: this follows today's rates and pricing rules and may change once the client's own calculation sheet is reviewed.</p>
             @else
                 <x-ui.empty-state icon="scale" title="Enter a weight" message="The price shows here as you type." compact />
             @endif
