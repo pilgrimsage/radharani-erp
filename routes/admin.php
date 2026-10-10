@@ -32,8 +32,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     // Route::get('/loyalty-settings', LoyaltySettingsManager::class)
     //     ->middleware('permission:referral.manage')->name('admin.loyalty-settings');
 
-    Route::get('/referrals', ReferralOverview::class)
-        ->middleware('permission:referral.manage')->name('admin.referrals');
+    Route::redirect('/referrals', '/referral')->name('admin.referrals');
 
     Route::get('/customers', CustomerManager::class)
         ->middleware('permission:customer.manage')->name('admin.customers');

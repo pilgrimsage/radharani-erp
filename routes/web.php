@@ -26,6 +26,7 @@ require __DIR__.'/notifications.php';
 require __DIR__.'/installments.php';
 require __DIR__.'/reports.php';
 require __DIR__.'/ledgers.php';
+require __DIR__.'/referral.php';
 require __DIR__.'/storefront.php';
 require __DIR__.'/website.php';
 require __DIR__.'/admin.php';

@@ -84,14 +84,7 @@ class CustomerManager extends Component
             'status' => $this->status,
         ];
 
-        // New customers get a referral code immediately — this is what
-        // makes them shareable from day one, not just after their first sale.
-        if (! $this->editingId) {
-            do {
-                $code = strtoupper(Str::random(6));
-            } while (Customer::where('referral_code', $code)->exists());
-            $data['referral_code'] = $code;
-        }
+        // Referral codes are opt-in (8 Oct change list, 15.1): none is issued here.
 
         Customer::updateOrCreate(['id' => $this->editingId], $data);
 

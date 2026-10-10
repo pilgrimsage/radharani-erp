@@ -62,6 +62,7 @@ $nav = [
         ['route' => 'purchases.list', 'label' => 'Purchase List'],
     ]],
     ['type' => 'link', 'route' => 'notifications.queue', 'label' => 'Messages', 'icon' => 'bell', 'badge' => $pendingMessages],
+    ['type' => 'link', 'route' => 'referral', 'label' => 'Referral', 'icon' => 'gift', 'can' => 'referral.manage'],
     ['key' => 'installments', 'label' => 'Installments', 'icon' => 'calendar', 'can' => 'customer.manage', 'items' => [
         ['route' => 'installments.enrol', 'label' => 'Scheme Enrolment'],
         ['route' => 'installments.monthly-status', 'label' => 'Monthly Status'],
@@ -86,7 +87,6 @@ $nav = [
         ['route' => 'admin.parties', 'label' => 'Karigars & Centres', 'can' => 'purchase.manage'],
         ['route' => 'admin.locations', 'label' => 'Locations', 'can' => 'location.manage'],
         ['route' => 'admin.roles', 'label' => 'Roles & Permissions', 'can' => 'role.manage'],
-        ['route' => 'admin.referrals', 'label' => 'Referrals', 'can' => 'referral.manage'],
         ['route' => 'admin.audit-log', 'label' => 'Audit Log', 'can' => 'audit.view'],
     ]],
 ];
