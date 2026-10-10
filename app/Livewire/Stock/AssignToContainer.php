@@ -81,6 +81,41 @@ class AssignToContainer extends Component
     // so fast consecutive scans queue up instead of overwriting each other.
     public function scan(string $raw): void
     {
+        // Several at once: codes pasted or scanned together, separated by spaces, commas or new lines.
+        $codes = preg_split('/[\s,;]+/', trim($raw), -1, PREG_SPLIT_NO_EMPTY);
+        if (count($codes) > 1) {
+            foreach ($codes as $one) {
+                $this->scanOne($one);
+            }
+            $this->dispatch('scan-ready');
+
+            return;
+        }
+
+        $this->scanOne($raw);
+        $this->dispatch('scan-ready');
+    }
+
+    // Pick the destination from a list instead of scanning it.
+    public function chooseDestination(string $value): void
+    {
+        [$type, $id] = array_pad(explode(':', $value, 2), 2, null);
+        $model = match ($type) {
+            'packet' => Packet::find($id),
+            'box' => Box::find($id),
+            default => null,
+        };
+        if (! $model) {
+            return;
+        }
+        $this->destType = $type;
+        $this->destId = $model->id;
+        $this->destError = null;
+        $this->dispatch('scan-ready');
+    }
+
+    private function scanOne(string $raw): void
+    {
         $code = StockLookup::normalize($raw);
 
         if ($code === '' || ! $this->destId) {
@@ -88,7 +123,6 @@ class AssignToContainer extends Component
         }
 
         $this->destType === 'packet' ? $this->scanPieceIntoPacket($code) : $this->scanPacketIntoBox($code);
-        $this->dispatch('scan-ready');
     }
 
     private function scanPieceIntoPacket(string $code): void

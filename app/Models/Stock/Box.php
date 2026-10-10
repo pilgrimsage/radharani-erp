@@ -22,6 +22,11 @@ class Box extends Model
             ->useLogName('stock');
     }
 
+    public function audits()
+    {
+        return $this->hasMany(StockAudit::class);
+    }
+
     public function packets()
     {
         return $this->hasMany(Packet::class);

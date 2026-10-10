@@ -14,11 +14,15 @@ $nav = [
     ['type' => 'link', 'route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'grid'],
     ['key' => 'stock', 'label' => 'Stock', 'icon' => 'gem', 'can' => 'stock.manage', 'items' => [
         ['route' => 'stock.items', 'label' => 'Inventory'],
+        ['route' => 'stock.summary', 'label' => 'Product View'],
+        ['route' => 'stock.audit', 'label' => 'Stock Audit', 'can' => 'stock.audit'],
+        ['route' => 'stock.unassigned', 'label' => 'Unassigned Items'],
         ['route' => 'stock.boxes', 'label' => 'Boxes & Packets'],
         ['route' => 'stock.categories', 'label' => 'Categories', 'can' => 'category.manage'],
         ['route' => 'stock.assign', 'label' => 'Change Item location'],
         ['route' => 'stock.qr-codes', 'label' => 'QR Codes'],
         ['route' => 'stock.import', 'label' => 'Bulk Import'],
+        ['route' => 'stock.huid', 'label' => 'HUID Export / Update'],
         ['route' => 'stock.configurator', 'label' => 'Configurator'],
     ]],
     ['key' => 'movements', 'label' => 'Movements', 'icon' => 'repeat', 'items' => [

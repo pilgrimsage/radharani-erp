@@ -16,6 +16,8 @@ class ItemDetail extends Component
 
     public bool $showMove = false;
     public ?int $moveToPacketId = null;
+    public ?string $moveBox = null; // narrows the packet list to one box
+    public ?string $moveScanError = null;
 
     public function mount(Item $item): void
     {
@@ -32,7 +34,30 @@ class ItemDetail extends Component
     {
         $this->resetValidation();
         $this->moveToPacketId = $this->item->packet_id;
+        $this->moveBox = null;
+        $this->moveScanError = null;
         $this->showMove = true;
+    }
+
+    // Scan (or type) a packet or box code while moving: a packet is chosen, a box narrows the list.
+    public function scanDestination(string $raw): void
+    {
+        $this->moveScanError = null;
+        $found = \App\Support\StockLookup::container($raw);
+        if (! $found) {
+            $this->moveScanError = 'No packet or box has that code.';
+
+            return;
+        }
+        if ($found['type'] === 'packet') {
+            $this->moveToPacketId = $found['model']->id;
+            $this->moveBox = $found['model']->box?->code;
+
+            return;
+        }
+        $this->moveBox = $found['model']->code;
+        $inside = $found['model']->packets()->pluck('id');
+        $this->moveToPacketId = $inside->count() === 1 ? $inside->first() : null;
     }
 
     public function move(): void
@@ -87,7 +112,9 @@ class ItemDetail extends Component
             'lastMovement' => $lastOut,
             'qr' => $this->item->qrCodes()->latest('id')->first(),
             'packetsByBox' => $this->showMove
-                ? Packet::with('box:id,code')->orderBy('code')->get(['id', 'code', 'label', 'box_id'])->groupBy(fn ($p) => $p->box?->code ?? 'Not in a box')
+                ? Packet::with('box:id,code')->orderBy('code')->get(['id', 'code', 'label', 'box_id'])
+                    ->when($this->moveBox, fn ($c) => $c->filter(fn ($p) => $p->box?->code === $this->moveBox))
+                    ->groupBy(fn ($p) => $p->box?->code ?? 'Not in a box')
                 : collect(),
         ])->layout('components.layouts.app', ['title' => "Item {$this->item->label} · Radharani Jewellery"]);
     }

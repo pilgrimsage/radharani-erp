@@ -62,7 +62,12 @@
                         </span>
                     </a>
                 </td>
-                <td><x-ui.badge :tone="$isBox ? 'dark' : 'gold'" size="sm">{{ $isBox ? 'Box' : 'Packet' }}</x-ui.badge></td>
+                <td>
+                    <x-ui.badge :tone="$isBox ? 'dark' : 'gold'" size="sm">{{ $isBox ? 'Box' : 'Packet' }}</x-ui.badge>
+                    @if ($isBox)
+                        <div class="text-[11.5px] text-ink_text-muted mt-1">{{ $row->last_audit ? 'Audited ' . \Illuminate\Support\Carbon::parse($row->last_audit)->format('j M Y') : 'Never audited' }}</div>
+                    @endif
+                </td>
                 <td class="rj-code text-[12.5px] text-ink_text-secondary">
                     @if ($isBox) <span class="text-ink_text-muted">{{ $row->child_count }} {{ \Illuminate\Support\Str::plural('packet', $row->child_count) }}</span>
                     @elseif ($row->parent_code) <a href="{{ route('stock.boxes.show', $row->parent_id) }}" class="hover:text-gold-dark">{{ $row->parent_code }}</a>

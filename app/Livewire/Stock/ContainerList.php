@@ -161,7 +161,8 @@ class ContainerList extends Component
             (select count(*) from packets p where p.box_id = boxes.id and p.deleted_at is null) as child_count,
             (select count(*) from items i join packets p on p.id = i.packet_id where p.box_id = boxes.id and i.deleted_at is null and p.deleted_at is null) as items_count,
             (select coalesce(sum(i.weight), 0) from items i join packets p on p.id = i.packet_id where p.box_id = boxes.id and i.deleted_at is null and p.deleted_at is null) as weight,
-            boxes.created_at");
+            boxes.created_at,
+            (select max(a.created_at) from stock_audits a where a.box_id = boxes.id) as last_audit");
 
         $packets = DB::table('packets')->leftJoin('boxes as b', fn ($j) => $j->on('b.id', '=', 'packets.box_id')->whereNull('b.deleted_at'))
             ->whereNull('packets.deleted_at')->selectRaw("
@@ -169,7 +170,8 @@ class ContainerList extends Component
             0 as child_count,
             (select count(*) from items i where i.packet_id = packets.id and i.deleted_at is null) as items_count,
             (select coalesce(sum(i.weight), 0) from items i where i.packet_id = packets.id and i.deleted_at is null) as weight,
-            packets.created_at");
+            packets.created_at,
+            NULL as last_audit");
 
         return DB::query()->fromSub($boxes->unionAll($packets), 'c');
     }

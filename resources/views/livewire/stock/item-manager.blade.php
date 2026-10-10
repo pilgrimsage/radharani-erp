@@ -6,7 +6,7 @@
                 <x-slot:trigger>
                     <x-ui.button variant="secondary" iconRight="chevron-down">Tools</x-ui.button>
                 </x-slot:trigger>
-                <x-ui.dropdown-item icon="scan" :href="route('stock.assign')">Assign to packets</x-ui.dropdown-item>
+                <x-ui.dropdown-item icon="scan" :href="route('stock.assign')">Change item location</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="qr-code" :href="route('stock.qr-codes')">QR code generator</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="upload" :href="route('stock.import')">Bulk import</x-ui.dropdown-item>
                 <x-ui.dropdown-item icon="layers" :href="route('stock.configurator')">Configurator</x-ui.dropdown-item>

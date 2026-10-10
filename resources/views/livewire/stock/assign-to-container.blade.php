@@ -32,6 +32,18 @@
                         @if ($destError)
                             <p class="rj-error"><x-ui.icon name="alert-triangle" :size="12" />{{ $destError }}</p>
                         @endif
+                        <div class="flex items-center gap-3 mt-4">
+                            <span class="text-[12.5px] text-ink_text-muted">or choose from the list</span>
+                            <select class="rj-select w-auto min-w-[220px]" aria-label="Choose a destination" x-on:change="if ($event.target.value) $wire.chooseDestination($event.target.value)">
+                                <option value="">Packet or box...</option>
+                                <optgroup label="Packets">
+                                    @foreach (\App\Models\Stock\Packet::orderBy('code')->get(['id', 'code', 'label']) as $dp)<option value="packet:{{ $dp->id }}">{{ $dp->code }}{{ $dp->label ? ' · ' . $dp->label : '' }}</option>@endforeach
+                                </optgroup>
+                                <optgroup label="Boxes">
+                                    @foreach (\App\Models\Stock\Box::orderBy('code')->get(['id', 'code', 'label']) as $db)<option value="box:{{ $db->id }}">{{ $db->code }}{{ $db->label ? ' · ' . $db->label : '' }}</option>@endforeach
+                                </optgroup>
+                            </select>
+                        </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
                             <div class="flex gap-3 p-3.5 rounded-xl bg-surface-sunken ring-1 ring-inset ring-line-light">
                                 <x-ui.icon name="package" :size="18" class="text-gold-dark shrink-0 mt-0.5" />
@@ -88,7 +100,7 @@
                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11.5px] text-ink-dim" wire:loading.remove wire:target="scan">Press Enter</span>
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gold-light" wire:loading wire:target="scan"><x-ui.icon name="loader" :size="17" class="animate-spin" /></span>
                             </div>
-                            <p class="text-[12px] text-ink-dim mt-2">Scanners type the code and press Enter for you, so you can keep scanning without touching the screen.</p>
+                            <p class="text-[12px] text-ink-dim mt-2">Scanners type the code and press Enter for you. You can also paste several codes at once, separated by spaces or new lines.</p>
                         </form>
                     </div>
 

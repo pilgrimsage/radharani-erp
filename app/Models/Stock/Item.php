@@ -18,7 +18,7 @@ class Item extends Model
     public const CODE_ALPHABET = '234679ACDEFGHJKMNPQRTUVWXY';
 
     protected $fillable = [
-        'packet_id', 'metal', 'huid_code', 'internal_code', 'category', 'category_id', 'purity',
+        'packet_id', 'metal', 'huid_code', 'internal_code', 'category', 'category_id', 'entry_batch_id', 'purity',
         'weight', 'description', 'hsn_code', 'making_type', 'making_value',
         'pair_group_id', 'source_karigar_batch_id', 'source_purchase_item_id',
         'status', 'net_weight', 'stones', 'stone_value',
@@ -103,6 +103,11 @@ class Item extends Model
     public function sourcePurchaseItem()
     {
         return $this->belongsTo(PurchaseItem::class, 'source_purchase_item_id');
+    }
+
+    public function entryBatch()
+    {
+        return $this->belongsTo(EntryBatch::class);
     }
 
     public function categoryRow()

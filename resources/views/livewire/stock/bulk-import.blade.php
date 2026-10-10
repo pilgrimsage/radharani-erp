@@ -51,11 +51,17 @@
             <x-ui.card title="How the sheet should look" icon="info">
                 <ul class="space-y-3 text-[13px] text-ink_text-secondary">
                     <li class="flex gap-2.5"><x-ui.icon name="check" :size="15" class="text-success shrink-0 mt-0.5" /><span>First row holds the column names. Any order, any spelling. You match them in the next step.</span></li>
-                    <li class="flex gap-2.5"><x-ui.icon name="check" :size="15" class="text-success shrink-0 mt-0.5" /><span><span class="font-semibold text-ink_text-primary">Category, purity and weight</span> are needed for every piece.</span></li>
+                    <li class="flex gap-2.5"><x-ui.icon name="check" :size="15" class="text-success shrink-0 mt-0.5" /><span><span class="font-semibold text-ink_text-primary">Weight</span> is needed for every piece. Category, purity and the rest can be left out and completed later. The government HUID file works as it is: you pick the metal in the next step.</span></li>
                     <li class="flex gap-2.5"><x-ui.icon name="check" :size="15" class="text-success shrink-0 mt-0.5" /><span>Pieces without a HUID get an internal code automatically.</span></li>
                     <li class="flex gap-2.5"><x-ui.icon name="check" :size="15" class="text-success shrink-0 mt-0.5" /><span>Rows that look like pieces already in stock are flagged and left out unless you tick them.</span></li>
                 </ul>
-                <x-ui.button variant="soft" size="sm" icon="download" class="mt-5" wire:click="downloadTemplate">Download a sample sheet</x-ui.button>
+                <div class="flex flex-wrap items-end gap-2.5 mt-5">
+                    <x-ui.field label="Blank sheet for" for="tpl-count" class="w-[130px]">
+                        <input id="tpl-count" type="number" min="1" max="500" wire:model="templateCount" class="rj-input tabular" aria-label="Number of pieces">
+                    </x-ui.field>
+                    <x-ui.button variant="soft" size="sm" icon="download" wire:click="downloadBlankTemplate">Download blank (HUID format)</x-ui.button>
+                    <x-ui.button variant="ghost" size="sm" icon="download" wire:click="downloadTemplate">Sample sheet</x-ui.button>
+                </div>
             </x-ui.card>
         </div>
     @endif

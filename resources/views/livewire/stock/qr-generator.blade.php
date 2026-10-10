@@ -2,6 +2,12 @@
     <x-ui.page-header title="QR Codes" subtitle="Stickers for packets, boxes and pieces. Scanning one opens that record straight away."
         :crumbs="[['label' => 'Stock', 'href' => route('stock.items')], ['label' => 'QR Codes']]">
         <x-slot:actions>
+            <x-ui.dropdown>
+                <x-slot:trigger><x-ui.button variant="secondary" icon="download">Download Excel</x-ui.button></x-slot:trigger>
+                <x-ui.dropdown-item icon="archive" :href="route('stock.qr.export', ['sort' => 'box'])">Sorted by box</x-ui.dropdown-item>
+                <x-ui.dropdown-item icon="package" :href="route('stock.qr.export', ['sort' => 'packet'])">Sorted by packet</x-ui.dropdown-item>
+                <x-ui.dropdown-item icon="layers" :href="route('stock.qr.export', ['sort' => 'category'])">Sorted by category</x-ui.dropdown-item>
+            </x-ui.dropdown>
             <div class="rj-segment">
                 <button type="button" wire:click="$set('mode', 'single')" class="{{ $mode === 'single' ? 'is-active' : '' }}"><x-ui.icon name="qr-code" :size="14" /> Single label</button>
                 <button type="button" wire:click="$set('mode', 'batch')" class="{{ $mode === 'batch' ? 'is-active' : '' }}"><x-ui.icon name="layers" :size="14" /> Batch</button>
