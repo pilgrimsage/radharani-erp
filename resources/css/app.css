@@ -138,11 +138,11 @@
 
     /* Segmented control (tabs that switch a mode inside a page) */
     .rj-segment {
-        @apply inline-flex items-center gap-1 p-1 rounded-control bg-surface-muted border border-line-light;
+        @apply inline-flex items-center gap-1 p-1 rounded-control bg-surface-muted border border-line-light max-w-full overflow-x-auto;
     }
     .rj-segment > button,
     .rj-segment > a {
-        @apply h-8 px-3.5 rounded-lg text-[12.5px] font-semibold text-ink_text-secondary inline-flex items-center gap-1.5 transition-all
+        @apply h-8 px-3.5 rounded-lg text-[12.5px] font-semibold text-ink_text-secondary inline-flex items-center gap-1.5 transition-all shrink-0 whitespace-nowrap
                hover:text-ink_text-primary;
     }
     .rj-segment > .is-active {

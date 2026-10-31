@@ -90,8 +90,8 @@
 
             <x-ui.card title="Details" icon="file-text">
                 <dl class="rj-dl">
-                    <div><dt>Customer</dt><dd>{{ $sale->customer->name }}<span class="block text-[12.5px] text-ink_text-muted tabular">{{ $sale->customer->phone }}</span>@if ($sale->customer->gstin)<span class="block text-[12.5px] text-ink_text-muted rj-code">GSTIN {{ $sale->customer->gstin }}</span>@endif</dd></div>
-                    <div><dt>Entered</dt><dd>{{ $sale->created_at->format('j M Y, g:i a') }} · {{ $sale->creator?->name }}</dd></div>
+                    <div><dt>Customer</dt><dd>{{ $sale->customer->name }}<span class="block text-[12.5px] text-ink_text-muted tabular">{{ $sale->customer->phone }}</span>@if ($sale->customer->gstin)<span class="block text-[12.5px] text-ink_text-muted rj-code">GSTIN {{ $sale->customer->gstin }}</span>@endif @if (! $sale->customer->is_walk_in && trim((string) $sale->customer->address) !== '')<span class="block text-[12.5px] text-ink_text-muted">{{ $sale->customer->address }}</span>@endif</dd></div>
+                    <div><dt>Entered by</dt><dd>{{ $sale->created_at->format('j M Y, g:i a') }} · {{ $sale->creator?->name }}</dd></div>
                     @if ($sale->confirmed_by_accountant)<div><dt>Tally bill number</dt><dd class="rj-code">{{ $sale->invoice_number }}</dd></div>@endif
                     @if ($sale->referrer)<div><dt>Referred by</dt><dd>{{ $sale->referrer->name }}</dd></div>@endif
                     @if ($sale->order_override_note)<div><dt>Sold over an order hold</dt><dd>{{ $sale->order_override_note }}</dd></div>@endif

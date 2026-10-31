@@ -96,7 +96,7 @@ class AssignToContainer extends Component
 
                 return;
             }
-            $label = $model->label;
+            $label = $model->label_with_tag;
             $from = $model->packet?->code;
             $currentId = $model->packet_id;
             $detail = trim($model->category . ' · ' . number_format($model->weight, 3) . ' g');

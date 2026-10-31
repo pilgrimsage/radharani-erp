@@ -13,6 +13,8 @@
 <h1>Radharani Jewellery Works</h1>
 <div class="sub">{{ $sale->created_at->format('j M Y, g:i a') }} · {{ $sale->confirmed_by_accountant ? 'Bill ' . $sale->invoice_number : 'Not yet verified' }}</div>
 <div><strong>{{ $sale->customer->name }}</strong> · {{ $sale->customer->phone }}@if ($sale->customer->gstin) · GSTIN {{ $sale->customer->gstin }}@endif</div>
+@if (! $sale->customer->is_walk_in && trim((string) $sale->customer->address) !== '')<div>{{ $sale->customer->address }}</div>@endif
+<div class="sub">Billed by {{ $sale->creator?->name }}</div>
 <table>
   <thead><tr><th>Item</th><th>Weight</th><th class="n">Price</th></tr></thead>
   <tbody>

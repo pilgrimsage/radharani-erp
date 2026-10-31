@@ -29,9 +29,11 @@ class GlobalSearch extends Component
             ->orWhere('label', 'like', "%{$this->query}%")
             ->limit(5)->get();
 
-        $items = Item::where('huid_code', 'like', "%{$this->query}%")
-            ->orWhere('internal_code', 'like', "%{$this->query}%")
-            ->orWhere('category', 'like', "%{$this->query}%")
+        // The same matching as the Inventory table (codes, sticker codes, description, packet and box), exact code first.
+        $term = strtoupper(trim($this->query));
+        $items = Item::searchAnything($this->query)
+            ->orderByRaw('(items.huid_code = ? or items.internal_code = ?) desc', [$term, $term])
+            ->orderByDesc('items.id')
             ->limit(5)->get();
 
         $customers = Customer::where('name', 'like', "%{$this->query}%")

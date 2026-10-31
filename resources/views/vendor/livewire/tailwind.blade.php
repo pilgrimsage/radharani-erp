@@ -20,7 +20,7 @@ $btn = 'press min-w-[34px] h-[34px] px-2 inline-flex items-center justify-center
                 of <span class="font-semibold text-ink_text-primary tabular">{{ $paginator->total() }}</span>
             </p>
 
-            <div class="flex items-center gap-1">
+            <div class="flex flex-wrap items-center gap-1">
                 @if ($paginator->onFirstPage())
                     <span class="{{ $btn }} text-ink_text-muted/60 cursor-not-allowed" aria-disabled="true" aria-label="Previous page">
                         <x-ui.icon name="chevron-left" :size="15" />

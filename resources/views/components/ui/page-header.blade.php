@@ -28,7 +28,7 @@
             @endif
         </div>
         @isset($actions)
-            <div class="flex flex-wrap items-center gap-2.5 shrink-0">{{ $actions }}</div>
+            <div class="flex flex-wrap items-center gap-2.5 max-w-full sm:shrink-0">{{ $actions }}</div>
         @endisset
     </div>
 </div>

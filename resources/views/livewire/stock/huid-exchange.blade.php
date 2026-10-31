@@ -17,12 +17,12 @@
                 <p class="rj-help mt-1">{{ $inScope }} {{ \Illuminate\Support\Str::plural('piece', $inScope) }} in this export. Pick a batch to export only the pieces entered together, like an import or the pieces added at one time.</p>
             </div>
             <div class="space-y-3">
-                <div class="flex items-center gap-3">
-                    <div class="flex-1 text-[13px] text-ink_text-secondary"><span class="font-semibold text-ink_text-primary">HUID exporter.</span> The layout of the government HUID website's upload file.</div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex-1 min-w-[220px] text-[13px] text-ink_text-secondary"><span class="font-semibold text-ink_text-primary">HUID exporter.</span> The layout of the government HUID website's upload file.</div>
                     <x-ui.button icon="download" wire:click="exportHuidFormat">HUID file</x-ui.button>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="flex-1 text-[13px] text-ink_text-secondary"><span class="font-semibold text-ink_text-primary">Full data.</span> Every detail of each piece, to fill in the leftovers (HUIDs, making charges) and upload again.</div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex-1 min-w-[220px] text-[13px] text-ink_text-secondary"><span class="font-semibold text-ink_text-primary">Full data.</span> Every detail of each piece, to fill in the leftovers (HUIDs, making charges) and upload again.</div>
                     <x-ui.button variant="secondary" icon="download" wire:click="exportFull">Excel sheet</x-ui.button>
                     <x-ui.button variant="secondary" icon="download" wire:click="exportFullCsv">CSV</x-ui.button>
                 </div>

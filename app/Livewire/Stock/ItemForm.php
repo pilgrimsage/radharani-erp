@@ -109,7 +109,7 @@ class ItemForm extends Component
     {
         return [
             'packet_id' => ['nullable', 'exists:packets,id'],
-            'huid_code' => ['nullable', 'string', new \App\Rules\Huid, Rule::unique('items', 'huid_code')->ignore($this->editingId)],
+            'huid_code' => ['nullable', 'string', new \App\Rules\Huid, new \App\Rules\HuidFree($this->editingId)],
             'metal' => ['required', Rule::in(array_keys(self::METALS))],
             'categoryId' => ['required', Rule::exists('item_categories', 'id')->where('metal', $this->metal)],
             'purity' => ['required', 'string', 'max:10'],
@@ -120,7 +120,7 @@ class ItemForm extends Component
             'making_value' => ['required', 'numeric', 'min:0'],
             'pairMode' => ['required', Rule::in(['none', 'new', 'existing', 'keep'])],
             'partnerWeight' => ['required_if:pairMode,new', 'nullable', 'numeric', 'min:0.001'],
-            'partnerHuid' => ['nullable', 'string', new \App\Rules\Huid, 'different:huid_code', Rule::unique('items', 'huid_code')],
+            'partnerHuid' => ['nullable', 'string', new \App\Rules\Huid, 'different:huid_code', new \App\Rules\HuidFree()],
             'pairWithId' => ['required_if:pairMode,existing', 'nullable', 'exists:items,id'],
             'net_weight' => ['nullable', 'numeric', 'min:0.001', 'lte:weight'],
             'stones' => ['nullable', 'string', 'max:120'],

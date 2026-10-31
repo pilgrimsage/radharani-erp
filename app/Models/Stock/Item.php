@@ -93,6 +93,15 @@ class Item extends Model
         return $this->huid_code ?: (string) $this->internal_code;
     }
 
+    // A piece can hold both codes (a HUID added later to a piece that already had its tag code). Where a
+    // piece is named in a search or scan, show both so the code on the tag is never hidden behind the HUID.
+    public function getLabelWithTagAttribute(): string
+    {
+        return $this->huid_code && $this->internal_code
+            ? "{$this->huid_code} (tag {$this->internal_code})"
+            : $this->label;
+    }
+
     // Generates a unique 5-character internal code from a charset that
     // avoids visually ambiguous characters.
     public static function generateInternalCode(): string

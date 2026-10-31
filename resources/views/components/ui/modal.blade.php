@@ -36,7 +36,7 @@ $formTag = $submit ? 'form' : 'div';
                 <div class="h-[3px] gold-sheen"></div>
 
                 @if ($title)
-                    <div class="flex items-start gap-3.5 px-6 pt-5 pb-4">
+                    <div class="flex items-start gap-3 sm:gap-3.5 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4">
                         @if ($icon)
                             <div class="w-10 h-10 shrink-0 rounded-xl bg-gold-tint text-gold-dark ring-1 ring-inset ring-gold-soft/70 flex items-center justify-center">
                                 <x-ui.icon :name="$icon" :size="18" />
@@ -56,11 +56,11 @@ $formTag = $submit ? 'form' : 'div';
                 @endif
 
                 <{{ $formTag }} @if($submit) wire:submit="{{ $submit }}" @endif>
-                    <div class="px-6 {{ $title ? 'pb-6' : 'py-6' }} max-h-[calc(100dvh-220px)] overflow-y-auto">
+                    <div class="px-4 sm:px-6 {{ $title ? 'pb-5 sm:pb-6' : 'py-5 sm:py-6' }} max-h-[calc(100dvh-170px)] sm:max-h-[calc(100dvh-220px)] overflow-y-auto overscroll-contain">
                         {{ $slot }}
                     </div>
                     @isset($footer)
-                        <div class="flex flex-wrap items-center justify-end gap-2.5 px-6 py-4 bg-surface-sunken border-t border-line-light">
+                        <div class="flex flex-wrap items-center justify-end gap-2.5 px-4 sm:px-6 py-3 sm:py-4 bg-surface-sunken border-t border-line-light">
                             {{ $footer }}
                         </div>
                     @endisset

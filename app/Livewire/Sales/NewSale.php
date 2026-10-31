@@ -565,6 +565,10 @@ class NewSale extends Component
         $customer = $this->customerObject;
         $lines = ['Radharani Jewellery Works', 'Bill, ' . now()->format('j M Y, g:i a'), ''];
         $lines[] = 'Customer: ' . ($customer ? $customer->name . ($customer->is_walk_in ? '' : ' · ' . $customer->phone) : '-');
+        if ($customer && ! $customer->is_walk_in && trim((string) $customer->address) !== '') {
+            $lines[] = 'Address: ' . trim(preg_replace('/\s+/', ' ', $customer->address));
+        }
+        $lines[] = 'Billed by: ' . (auth()->user()?->name ?? '-');
         foreach ($this->cart as $line) {
             $lines[] = '';
             $lines[] = $line['label'] . ' · ' . $line['category'] . ' · ' . number_format($line['weight'], 3) . ' g'

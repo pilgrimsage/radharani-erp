@@ -242,7 +242,7 @@
                 <x-ui.card title="Payment" subtitle="A bill can be paid in parts. Anything left stays as the balance." icon="coins">
                     <div class="space-y-2">
                         @foreach ($payments as $i => $p)
-                            <div class="flex flex-wrap gap-2 items-center" wire:key="pay-{{ $i }}">
+                            <div class="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:flex sm:flex-wrap" wire:key="pay-{{ $i }}">
                                 @if (($p['mode'] ?? '') === 'exchange' || ($p['mode'] ?? '') === 'advance')
                                     <span class="rj-select w-[130px] flex items-center text-[13px] bg-gold-tint/50 !cursor-default">{{ $p['mode'] === 'advance' ? 'Advance' : 'Exchange credit' }}</span>
                                 @elseif (! array_key_exists($p['mode'] ?? '', $modes))
@@ -250,8 +250,8 @@
                                 @else
                                     <x-ui.mode-picker :model="'payments.' . $i . '.mode'" :value="$p['mode'] ?? 'cash'" :modes="$modes" />
                                 @endif
-                                <input type="text" inputmode="decimal" wire:model.live.debounce.300ms="payments.{{ $i }}.amount" placeholder="₹" class="rj-input h-11 tabular flex-1 @error('payments.' . $i . '.amount') is-invalid @enderror" aria-label="Amount" autocomplete="off">
-                                <x-ui.button variant="secondary" size="sm" wire:click="fillBalance({{ $i }})">Rest</x-ui.button>
+                                <input type="text" inputmode="decimal" wire:model.live.debounce.300ms="payments.{{ $i }}.amount" placeholder="₹" class="rj-input h-11 tabular col-span-3 order-last sm:order-none sm:col-span-1 sm:flex-1 sm:min-w-[140px] @error('payments.' . $i . '.amount') is-invalid @enderror" aria-label="Amount" autocomplete="off">
+                                <x-ui.button variant="secondary" size="sm" class="justify-self-start" wire:click="fillBalance({{ $i }})">Rest</x-ui.button>
                                 @if (count($payments) > 1)<x-ui.button variant="ghost" size="icon-sm" icon="x" wire:click="removePayment({{ $i }})" aria-label="Remove payment" />@endif
                             </div>
                         @endforeach

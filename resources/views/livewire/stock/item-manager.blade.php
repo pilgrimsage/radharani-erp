@@ -30,7 +30,7 @@
 
     <nav aria-label="Stock pages" class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-3 mb-6">
         @foreach ($links as $l)
-            <a href="{{ $l['href'] }}" class="press group flex items-center xl:flex-col xl:items-start gap-3 bg-white border border-line-light rounded-card shadow-card px-4 py-3.5 text-left transition-[border-color,box-shadow] duration-200 hover:border-gold-soft hover:shadow-raised">
+            <a href="{{ $l['href'] }}" class="press group flex flex-wrap xl:flex-nowrap items-center xl:flex-col xl:items-start gap-3 bg-white border border-line-light rounded-card shadow-card px-4 py-3.5 text-left transition-[border-color,box-shadow] duration-200 hover:border-gold-soft hover:shadow-raised">
                 <span class="w-9 h-9 shrink-0 rounded-[10px] flex items-center justify-center bg-gold-tint text-gold-dark ring-1 ring-inset ring-gold-soft/60 group-hover:bg-[#F6EAD0] transition-colors"><x-ui.icon :name="$l['icon']" :size="16" /></span>
                 <span class="text-[13px] font-semibold text-ink_text-primary leading-tight">{{ $l['label'] }}</span>
                 @if ($l['count'] !== null)<span class="ml-auto xl:ml-0 text-[11.5px] font-semibold tabular {{ $l['count'] ? 'text-gold-dark' : 'text-ink_text-muted' }}">{{ $l['count'] }} {{ $l['hint'] }}</span>@endif
@@ -128,7 +128,7 @@
                                 <x-ui.badge size="sm" title="Tagged with other pieces"><x-ui.icon name="link" :size="10" /> Pair</x-ui.badge>
                             @endif
                         </span>
-                        <span class="block text-[12.5px] text-ink_text-muted truncate">{{ $item->description ?: 'No description' }}</span>
+                        <span class="block text-[12.5px] text-ink_text-muted truncate">@if ($item->huid_code && $item->internal_code)<span class="rj-code">Tag {{ $item->internal_code }}</span> · @endif{{ $item->description ?: 'No description' }}</span>
                     </a>
                 </td>
                 <td class="font-medium">{{ $item->category }}</td>

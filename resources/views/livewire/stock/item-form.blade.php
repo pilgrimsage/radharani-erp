@@ -112,7 +112,7 @@
                         </x-ui.field>
                     </div>
                     <div class="mt-4">
-                        <div class="flex items-baseline justify-between gap-3 mb-1.5">
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-3 mb-1.5">
                             <span class="text-[13px] font-semibold text-ink_text-primary">Additional charges <span class="font-normal text-ink_text-muted">(optional)</span></span>
                             <span class="text-[12px] text-ink_text-muted">Start on every bill for this piece. Not taxed.</span>
                         </div>

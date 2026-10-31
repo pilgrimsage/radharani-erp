@@ -24,10 +24,10 @@
                     <option value="{{ $s->id }}">{{ $s->name }}</option>
                 @endforeach
             </select>
-            <div class="flex items-center gap-1.5">
-                <input type="date" wire:model.live="dateFrom" class="rj-input w-[150px] tabular" aria-label="From date">
+            <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                <input type="date" wire:model.live="dateFrom" class="rj-input min-w-0 flex-1 sm:flex-none sm:w-[150px] tabular" aria-label="From date">
                 <span class="text-ink_text-muted text-[12.5px]">to</span>
-                <input type="date" wire:model.live="dateTo" class="rj-input w-[150px] tabular" aria-label="To date">
+                <input type="date" wire:model.live="dateTo" class="rj-input min-w-0 flex-1 sm:flex-none sm:w-[150px] tabular" aria-label="To date">
             </div>
             @if ($this->hasActiveFilters())
                 <x-ui.button variant="ghost" size="sm" icon="x" wire:click="resetFilters">Clear all</x-ui.button>
