@@ -106,6 +106,11 @@
                             @endforeach
                         </ul>
                     @endif
+                    @can('stock.manage')
+                        <div class="mt-3">
+                            <x-ui.button variant="soft" size="sm" icon="plus" wire:click="startAddItem" target="startAddItem">Add new piece</x-ui.button>
+                        </div>
+                    @endcan
                     @error('cart')<p class="rj-error mt-3"><x-ui.icon name="alert-triangle" :size="12" />{{ $message }}</p>@enderror
 
                     <div class="mt-5 space-y-2">
@@ -362,4 +367,7 @@
     </x-ui.modal>
 
     <livewire:customers.customer-form />
+    @can('stock.manage')
+        <livewire:stock.item-form />
+    @endcan
 </div>

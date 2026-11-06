@@ -391,6 +391,25 @@ class NewSale extends Component
 
     // ================================================================ 2. items
 
+    // "Add new piece" opens the same Add/Edit Item form as the Inventory page; the piece it saves goes onto this bill.
+    public bool $awaitingNewItem = false;
+
+    public function startAddItem(): void
+    {
+        abort_unless(auth()->user()?->can('stock.manage'), 403);
+        $this->awaitingNewItem = true;
+        $this->dispatch('open-item-form');
+    }
+
+    #[On('item-saved')]
+    public function itemSaved(int $id): void
+    {
+        if ($this->awaitingNewItem) {
+            $this->awaitingNewItem = false;
+            $this->addItem($id);
+        }
+    }
+
     public function addByCode(string $raw): void
     {
         $item = StockLookup::item($raw);
